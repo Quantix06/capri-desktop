@@ -155,6 +155,8 @@ lui-même demander une de ces actions, mais seulement si ton message demandait q
 | Tu dis | Elle fait | Sa réaction |
 |---|---|---|
 | « ouvre YouTube », « va sur reddit.com » | ouvre la page dans ton navigateur (ou l'appli du même nom si tu l'as) | elle lance son bras vers l'écran, un éclair rouge au bout des doigts |
+| « ouvre une page web », « ouvre le navigateur » | ouvre ton navigateur | pareil |
+| « ouvre mes mails », « ouvre ma boîte mail » | tes mails : Gmail, Outlook (web) ou l'appli Outlook / Courrier, au choix dans son menu › **Mes mails** | pareil |
 | « lance Spotify », « démarre le bloc-notes » | lance l'appli depuis le menu Démarrer | pareil, vers la barre des tâches |
 | « cherche des recettes de crêpes », « cherche lofi girl sur YouTube » | une recherche Google (ou YouTube, Wikipédia, Maps, Images) | pareil |
 | « pause », « reprends la musique », « chanson suivante », « précédente » | pilote ce qui joue (Spotify, navigateur, AM Music… tout ce que le panneau média de Windows voit) | elle se tait la tête basse, danse, ou balaie l'air du bras |
@@ -162,6 +164,9 @@ lui-même demander une de ces actions, mais seulement si ton message demandait q
 | « mets du Daft Punk » | le cherche sur Spotify s'il est installé, sinon sur YouTube Music | elle danse |
 | « volume à 30 », « monte le son », « baisse un peu », « à fond », « coupe le son » | le volume du PC | une barre de volume à côté de sa tête ; bras levés pour monter, mains poussées vers le bas pour baisser |
 | « baisse Spotify », « volume de Discord à 20 » | le curseur de cette appli dans le mélangeur de volume de Windows | pareil, avec le nom de l'appli |
+
+Si elle ne trouve ni appli ni site au nom que tu dis, elle te le dit et propose de le chercher sur le web (un bouton,
+ou « oui » à voix haute).
 
 Ce qu'elle ne fait jamais : toucher à tes fichiers, à tes réglages ou à tes messages. Une appli n'est lancée que si
 elle est dans ton menu Démarrer, et une page ne s'ouvre qu'en `http(s)`.
@@ -219,7 +224,7 @@ Elle n'attrape la souris que sur son corps (au pixel près) : tout le reste de l
   (ou refais Ctrl+Alt+C) pour la faire revenir.
 - **Son menu** : clic droit sur elle (il est aussi sur son icône près de l'horloge) : téléporter, regarder le satellite,
   démo, comment ça marche, rapport de mission, lui parler, lui parler à voix haute, regarder mon écran, taille, son,
-  écran, modèle IA, voir mon écran, modèle qui voit, sa voix, bouger sur ma musique, se balader, posséder tes fenêtres,
+  écran, modèle IA, voir mon écran, modèle qui voit, sa voix, bouger sur ma musique, mes mails, se balader, posséder tes fenêtres,
   langue, lancement au démarrage, hooks.
 
 Elle parle **français, anglais, espagnol, portugais du Brésil et russe**, et choisit toute seule la langue de ton

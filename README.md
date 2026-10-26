@@ -145,6 +145,8 @@ open YouTube".
 | You say | She does | Her reaction |
 |---|---|---|
 | "open YouTube", "go to reddit.com" | opens the page in your browser (or the app of that name, if you have it) | she flings her arm at the screen, red lightning off her fingers |
+| "open a web page", "open the browser" | opens your browser | the same |
+| "open my mail", "open my inbox" | your mail: Gmail, Outlook (web) or the Outlook / Mail app, picked in her menu › **My mail** | the same |
 | "launch Spotify", "start Notepad" | launches the app from the Start menu | the same, at the taskbar |
 | "search for pancake recipes", "search lofi girl on YouTube" | a Google search (or YouTube, Wikipedia, Maps, Images) | the same |
 | "pause", "resume the music", "next song", "previous" | drives whatever's playing (Spotify, your browser, AM Music… anything Windows' media flyout sees) | she goes quiet with her head down, dances, or swipes the air |
@@ -152,6 +154,9 @@ open YouTube".
 | "play some Daft Punk" | looks it up in Spotify if it's installed, else on YouTube Music | she dances |
 | "volume 30", "turn it up", "a bit quieter", "all the way up", "mute" | the PC's volume | a volume bar by her head; arms thrown up to turn it up, hands pushed down to turn it down |
 | "turn Spotify down", "Discord volume to 20" | that app's slider in Windows' volume mixer | the same, with the app's name |
+
+If she can't find an app or a site by the name you said, she tells you and offers to look it up on the web (a button,
+or "yes" out loud).
 
 What she never does: touch your files, your settings or your messages. An app is only launched if it's in your Start
 menu, and a page only opens over `http(s)`.
@@ -204,7 +209,7 @@ She only catches the mouse on her actual body (pixel-precise): the rest of the s
   to bring her back.
 - **Her menu**: right-click her (it's also on her tray icon, next to the clock): teleport, look at the satellite, demo,
   how it works, mission report, talk to her, talk to her out loud, look at my screen, size, sound, screen, AI model,
-  see my screen, model that sees, her voice, move to my music, wander, possess your windows, language, start with
+  see my screen, model that sees, her voice, move to my music, my mail, wander, possess your windows, language, start with
   Windows, hooks.
 
 She speaks **French, English, Spanish, Brazilian Portuguese and Russian**, and picks the language of your system on her
