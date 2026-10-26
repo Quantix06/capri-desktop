@@ -56,6 +56,7 @@ export class Chat {
     this.speech.onVoices = (names) => host.setVoices(names);
     this.spoken = false;    // on
     this.listening = null;  // AbortController of the turn she's listening to
+    this.starting = false;  // her ears loading, the mic coming on
     this.earsFx = null;     // her ears' arcs
     this.misses = 0;        // turns in a row you said nothing
     host.onChatDelta(({ id, text }) => this.onDelta(id, text));
@@ -417,9 +418,18 @@ export class Chat {
   // Out loud: her chat opens (if it isn't), her ears load (the first time, she asks before
   // downloading them), the microphone goes on, and she listens.
   async startVoice() {
+    // once at a time: a second Ctrl+Alt+V while her ears load would start a second conversation
+    if (this.spoken || this.starting || !this.speech.available) return;
+    this.starting = true;
+    try {
+      await this.openVoice();
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  async openVoice() {
     const v = this.brain.t.voice;
-    if (this.spoken) return;
-    if (!this.speech.available) return;
     if (!this.open && !(await this.start())) return;
     const size = this.cfg.ears || 'base';
     if (!(await this.ears.cached(size))) {
@@ -451,6 +461,7 @@ export class Chat {
     this.spoken = true;
     this.misses = 0;
     this.panel.setVoice('on');
+    this.earsFx?.fade(); // never two sets of arcs
     this.earsFx = this.capri.fx.ears(() => this.capri.head());
     this.capri.perform('listen', this.capri.towardCenter());
     const hello = pick(v.hello);
