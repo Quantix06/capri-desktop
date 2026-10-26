@@ -265,6 +265,7 @@ function rebuildTray() {
     },
     // her look at your screen: whether she may, and the model she looks with
     { label: t.sight, type: 'checkbox', checked: cfg.sight, click: (item) => updateConfig({ sight: item.checked }) },
+    { label: t.peek, type: 'checkbox', checked: cfg.peek, click: (item) => updateConfig({ peek: item.checked }) },
     {
       label: t.visionModel,
       submenu: visionModels.length
@@ -426,15 +427,17 @@ function registerIpc() {
     return { ok: true, model: pickModel() };
   });
   // her answer, streamed to the overlay piece by piece as `chat:delta`. look: she looks at your
-  // screen for this one (her menu lets her, or `once`: you just said yes), with a model that sees.
+  // screen for this one (her menu lets her, or `once`: you just said yes, or `peek`: a glance of
+  // her own, only while her menu's "Comment on my screen now and then" is on), with a model that sees.
   ipcMain.handle('chat:send', async (_e, { id, messages, look = false }) => {
+    if (look === 'peek' && !config.load().peek) return { ok: false, error: 'nosight' };
     const abort = new AbortController();
     chats.set(id, abort);
     try {
       const send = (text) => overlay?.webContents.send('chat:delta', { id, text });
       let model = pickModel();
       if (look) {
-        if (!config.load().sight && look !== 'once') return { ok: false, error: 'nosight' };
+        if (!config.load().sight && look !== 'once' && look !== 'peek') return { ok: false, error: 'nosight' };
         await refreshModels();
         model = pickVision();
         if (!model) return { ok: false, error: 'novision' };

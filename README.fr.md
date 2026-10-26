@@ -185,7 +185,11 @@ et le commente, dans son personnage.
 
 - **Ta permission d'abord.** Par défaut elle demande à chaque fois (**Toujours**, **Juste cette fois**, **Non**, ou
   « oui » à voix haute). Son menu › **Voir mon écran quand je le demande** la laisse regarder sans demander. Elle ne
-  regarde jamais d'elle-même.
+  regarde jamais d'elle-même, sauf si tu coches l'option ci-dessous.
+- **Des coups d'œil à elle** (désactivé par défaut) : son menu › **Commenter mon écran de temps en temps**. Toutes les
+  6 à 12 minutes, à un moment calme (pas de chat ouvert, rien à l'écran, Claude au repos, elle réveillée), elle jette un
+  œil à ton écran et dit une petite phrase dessus dans une bulle « COUP D'ŒIL ». Elle reste vague sur ce qui a l'air
+  privé et évite de se répéter. Même image unique, même modèle local, rien d'enregistré.
 - **Une seule image**, de l'écran où elle est, prise au moment où tu le demandes, sans elle dessus, envoyée au modèle
   local puis jetée. Rien n'est enregistré.
 - **Il faut un modèle qui voit** les images : `ollama pull gemma3` (environ 3 Go ; `llava`, `qwen2.5vl`, `minicpm-v`…
@@ -224,7 +228,7 @@ Elle n'attrape la souris que sur son corps (au pixel près) : tout le reste de l
   (ou refais Ctrl+Alt+C) pour la faire revenir.
 - **Son menu** : clic droit sur elle (il est aussi sur son icône près de l'horloge) : téléporter, regarder le satellite,
   démo, comment ça marche, rapport de mission, lui parler, lui parler à voix haute, regarder mon écran, taille, son,
-  écran, modèle IA, voir mon écran, modèle qui voit, sa voix, bouger sur ma musique, mes mails, se balader, posséder tes fenêtres,
+  écran, modèle IA, voir mon écran, commenter mon écran, modèle qui voit, sa voix, bouger sur ma musique, mes mails, se balader, posséder tes fenêtres,
   langue, lancement au démarrage, hooks.
 
 Elle parle **français, anglais, espagnol, portugais du Brésil et russe**, et choisit toute seule la langue de ton
@@ -460,7 +464,7 @@ src/renderer/js/
 Pour bosser dessus : `npm run dev` active des routes de debug sur le bridge (`/debug/capture` enregistre une image de la fenêtre dans `captures/`,
 `/debug/testwin` ouvre des fenêtres de test sur lesquelles elle peut s'asseoir, une par nom, `/debug/mouse` bouge et clique un pointeur
 factice sur la fenêtre de Capri, sans toucher au vrai, `/debug/type` écrit dans son chat, `/debug/command` avec
-`{"name":"heard","text":"…"}` fait comme si elle l'avait entendu à voix haute).
+`{"name":"heard","text":"…"}` fait comme si elle l'avait entendu à voix haute, `{"name":"glance"}` lui fait jeter un coup d'œil à l'écran tout de suite).
 Si Capri installée tourne déjà, lance la version de dev à côté avec son propre dossier de données et son propre port :
 `CAPRI_PORT=47899 npx electron . --dev --user-data-dir=<un dossier>`.
 `npm run dist` fabrique l'installeur Windows dans `dist/`.

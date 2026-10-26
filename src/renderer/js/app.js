@@ -196,6 +196,7 @@ async function boot() {
   // out loud: "Talk to her out loud" in her menu, or Ctrl+Alt+V.
   const chat = new Chat({ capri, panel, voice, host, brain, powers });
   chat.configure(config);
+  chat.watchScreen(Boolean(config.peek)); // her menu: "Comment on my screen now and then"
   brain.onTalk = () => chat.start();
   // the first Claude Code event that ever reaches her: so you know it worked
   brain.linked = config.linked;
@@ -324,6 +325,7 @@ async function boot() {
       panel.labels = LINES[cfg.lang] || LINES.fr;
       document.documentElement.lang = cfg.lang;
     }
+    if (Boolean(cfg.peek) !== Boolean(chat.cfg.peek)) chat.watchScreen(Boolean(cfg.peek));
     chat.configure(cfg); // her voice, her ears, whether she may look at your screen
     powers.mailService = cfg.mail || 'gmail';
   });
@@ -349,6 +351,9 @@ async function boot() {
         break;
       case 'look': // "Look at my screen" in her menu: as if you'd asked her in her chat
         if (await chat.start()) chat.send(t.sight.prompt);
+        break;
+      case 'glance': // --dev: a glance of her own at your screen, now (her menu's option must be on)
+        chat.glance({ force: true });
         break;
       case 'heard': // --dev: as if she had heard `text` out loud (no microphone needed)
         if (chat.open) chat.send(cmd.text || '');

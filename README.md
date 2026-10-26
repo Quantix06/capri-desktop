@@ -173,7 +173,12 @@ a red line runs down the whole screen and its corners lock on, then she tells yo
 in character.
 
 - **Your permission first.** By default she asks every time (**Always**, **Just this once**, **No**, or "yes" out
-  loud). Her menu › **See my screen when I ask** lets her look without asking. She never looks on her own.
+  loud). Her menu › **See my screen when I ask** lets her look without asking. She never looks on her own, unless you
+  turn on the option below.
+- **Glances of her own** (off by default): her menu › **Comment on my screen now and then**. Every 6 to 12 minutes, at
+  a quiet moment (no chat open, nothing on screen, Claude idle, her awake), she glances at your screen and says one
+  short thing about it in a "PEEK" bubble. She stays vague about anything that looks private and tries not to repeat
+  herself. The same single picture, the same local model, nothing saved.
 - **One picture**, of the screen she's on, taken when you ask, without her on it, handed to the local model and then
   thrown away. Nothing is saved.
 - **It needs a model that sees** pictures: `ollama pull gemma3` (about 3 GB; `llava`, `qwen2.5vl`, `minicpm-v`… work
@@ -209,7 +214,7 @@ She only catches the mouse on her actual body (pixel-precise): the rest of the s
   to bring her back.
 - **Her menu**: right-click her (it's also on her tray icon, next to the clock): teleport, look at the satellite, demo,
   how it works, mission report, talk to her, talk to her out loud, look at my screen, size, sound, screen, AI model,
-  see my screen, model that sees, her voice, move to my music, my mail, wander, possess your windows, language, start with
+  see my screen, comment on my screen, model that sees, her voice, move to my music, my mail, wander, possess your windows, language, start with
   Windows, hooks.
 
 She speaks **French, English, Spanish, Brazilian Portuguese and Russian**, and picks the language of your system on her
@@ -438,7 +443,7 @@ src/renderer/js/
 To hack on it: `npm run dev` turns on debug routes on the bridge (`/debug/capture` saves a frame of the window to `captures/`,
 `/debug/testwin` opens test windows she can sit on, one per name, `/debug/mouse` moves and clicks a stand-in pointer
 over Capri's window, without touching the real one, `/debug/type` types in her chat, `/debug/command` with
-`{"name":"heard","text":"…"}` acts as if she had heard it out loud).
+`{"name":"heard","text":"…"}` acts as if she had heard it out loud, `{"name":"glance"}` makes her glance at the screen now).
 If an installed Capri is already running, run the dev one next to it with its own data folder and port:
 `CAPRI_PORT=47899 npx electron . --dev --user-data-dir=<a folder>`.
 `npm run dist` builds the Windows installer in `dist/`.

@@ -110,6 +110,7 @@ export const LINES = {
     },
     // son regard sur ton écran (chat.js)
     sight: {
+      peekBadge: 'COUP D’ŒIL', // a glance of her own (her menu)
       prompt: 'Regarde mon écran.', // her menu's "Look at my screen", as if you'd said it
       ask: 'Tu veux que je regarde ton écran ?',
       askHow: 'Une seule image, lue par un modèle sur ton PC (Ollama), puis jetée. Mon menu › Voir mon écran me le permet à chaque fois.',
@@ -329,6 +330,7 @@ export const LINES = {
     },
     // her look at your screen (chat.js)
     sight: {
+      peekBadge: 'PEEK', // a glance of her own (her menu)
       prompt: 'Look at my screen.', // her menu's "Look at my screen", as if you'd said it
       ask: 'You want me to look at your screen?',
       askHow: 'One picture, read by a model on your PC (Ollama), then thrown away. My menu › See my screen lets me every time.',
@@ -547,6 +549,7 @@ export const LINES = {
     },
     // su mirada a tu pantalla (chat.js)
     sight: {
+      peekBadge: 'VISTAZO', // a glance of her own (her menu)
       prompt: 'Mira mi pantalla.', // her menu's "Look at my screen", as if you'd said it
       ask: '¿Quieres que mire tu pantalla?',
       askHow: 'Una sola imagen, leída por un modelo en tu PC (Ollama), y luego descartada. Mi menú › Ver mi pantalla me deja siempre.',
@@ -764,6 +767,7 @@ export const LINES = {
     },
     // o olhar dela na sua tela (chat.js)
     sight: {
+      peekBadge: 'ESPIADA', // a glance of her own (her menu)
       prompt: 'Olha a minha tela.', // her menu's "Look at my screen", as if you'd said it
       ask: 'Quer que eu olhe a sua tela?',
       askHow: 'Uma única imagem, lida por um modelo no seu PC (Ollama), e depois descartada. Meu menu › Ver minha tela deixa sempre.',
@@ -981,6 +985,7 @@ export const LINES = {
     },
     // её взгляд на твой экран (chat.js)
     sight: {
+      peekBadge: 'ВЗГЛЯД', // a glance of her own (her menu)
       prompt: 'Посмотри на мой экран.', // her menu's "Look at my screen", as if you'd said it
       ask: 'Хочешь, я посмотрю на твой экран?',
       askHow: 'Одна картинка, её прочитает модель на твоём ПК (Ollama), потом она удаляется. Моё меню › Видеть мой экран — разрешить всегда.',

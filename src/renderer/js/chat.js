@@ -16,7 +16,7 @@
 // (ears.js), the same as typing it, and she says her answer out loud (speech.js). Then she listens
 // again, until you say "bye", press Ctrl+Alt+V again or close her panel.
 
-import { pick, fmt } from './util.js';
+import { pick, fmt, rand } from './util.js';
 import { parseAll, tagged as actionTag, asksSomething, answer as yesNo, isGoodbye } from './commands.js';
 import { Ears } from './ears.js';
 import { Speech } from './speech.js';
@@ -29,7 +29,9 @@ const CLOSE_TAG = /\[\[\s*close\s*:?\s*([^\]]*)\]\]/i; // [[close: AM Music]] at
 // "close", "shut down", "ferme", "quitte", "cierra", "fecha", "закрой"... in any of her languages
 const CLOSE_ASK = /\b(close|shut|quit|kill|exit)|ferm|quitt|coupe|arr[êe]t|cierr|cerra|fech|закр|выключ/i;
 const WINDOWS = navigator.userAgent.includes('Windows'); // her hands on the PC are Windows only
-const LISTEN_MS = 20000; // out loud: how long she waits for you to say something
+const LISTEN_MS = 20000;
+const PEEK_MIN_MS = 6 * 60 * 1000; // a glance of her own at your screen: every 6 to 12 minutes
+const PEEK_MAX_MS = 12 * 60 * 1000; // out loud: how long she waits for you to say something
 // what Whisper "hears" in silence or noise (it learned it from subtitles): not you
 const PHANTOM = /^[\s.…!?]*$|^[[(].*[\])]$|^(?:merci(?: beaucoup)?|thank you|thanks for watching|sous-titr|subtitles? by|amara|продолжение следует|субтитры|gracias|obrigad|you)[\s.!…]*$/i;
 
@@ -57,6 +59,10 @@ export class Chat {
     this.spoken = false;    // on
     this.listening = null;  // AbortController of the turn she's listening to
     this.starting = false;  // her ears loading, the mic coming on
+    // glances of her own at your screen (her menu)
+    this.peeker = 0;
+    this.nextPeek = 0;
+    this.glances = []; // what she said the last times, so she doesn't repeat herself
     this.earsFx = null;     // her ears' arcs
     this.misses = 0;        // turns in a row you said nothing
     host.onChatDelta(({ id, text }) => this.onDelta(id, text));
@@ -341,6 +347,52 @@ export class Chat {
     await this.ask(text, { look });
   }
 
+  // ---------- a glance of her own ----------
+
+  // Her menu's "Comment on my screen now and then": every few minutes, at a quiet moment, she
+  // glances at your screen (her scan line, the same single picture as when you ask) and says
+  // one thing about it in a bubble. Off: never.
+  watchScreen(on) {
+    clearInterval(this.peeker);
+    this.peeker = 0;
+    if (!on) return;
+    this.nextPeek = performance.now() + rand(PEEK_MIN_MS, PEEK_MAX_MS);
+    this.peeker = setInterval(() => {
+      if (performance.now() > this.nextPeek) this.glance();
+    }, 30000);
+  }
+
+  // One glance, if nothing else is going on (no chat, nothing on screen, Claude quiet, she's
+  // around and awake). force: now, quiet or not (--dev).
+  async glance({ force = false } = {}) {
+    const { capri, panel, brain } = this;
+    const quiet = !this.open && !this.turn && !panel.visible && !brain.busySessions.length && capri.mode === 'idle'
+      && !capri.busy && !capri.act && !capri.stowed && !capri.dormant && !capri.sky;
+    if (!force && !quiet) {
+      this.nextPeek = performance.now() + 60000; // another try in a minute
+      return;
+    }
+    this.nextPeek = performance.now() + rand(PEEK_MIN_MS, PEEK_MAX_MS);
+    capri.perform('scan');
+    await new Promise((r) => setTimeout(r, 350));
+    const said = this.glances.length ? ` Don't say again what you said before: ${this.glances.join(' / ')}` : '';
+    const res = await this.host.chatSend({
+      id: Date.now(),
+      look: 'peek',
+      messages: [
+        { role: 'system', content: this.persona({ look: true, peek: true }) },
+        { role: 'user', content: `(You glance at my screen on your own.)${said}` },
+      ],
+    });
+    if (!res.ok) return; // no model that sees, Ollama gone: nothing said, she tries again later
+    const line = clean(res.text).split('\n')[0];
+    if (!line || this.open || (!force && panel.visible)) return; // something else came up meanwhile
+    this.glances = [...this.glances, line].slice(-3);
+    panel.say({ kind: 'info', badge: brain.t.sight.peekBadge, face: mood(line), line, hold: 8000 });
+    capri.perform('curious', capri.towardCenter());
+    if (this.cfg.speakChat) this.speech.say(line, { lang: brain.lang });
+  }
+
   // ---------- closing an app ----------
 
   listApps() {
@@ -596,7 +648,8 @@ export class Chat {
   }
 
   // Who she is, how she talks, and what's going on right now.
-  persona({ look = false } = {}) {
+  // look: they showed her their screen; peek: she glances at it on her own (not asked)
+  persona({ look = false, peek = false } = {}) {
     const language = LANGUAGE[this.brain.lang] || 'English';
     const watching = this.brain.watching; // else Claude Code isn't part of her life here
     return [
@@ -609,7 +662,9 @@ export class Chat {
       ...(this.spoken ? ['You are talking out loud with them: one or two short sentences, easy to say.'] : []),
       'You are an AI-generated fan version of the character, not the real one: say so if asked.',
       ...(look
-        ? ['They just showed you their screen: it is the picture with their last message. Say what you see on it in a few words and comment on it, in character (playful, a little teasing). Never read out passwords, codes or private messages you may see. No tags this time.']
+        ? [peek
+          ? 'Nobody asked: you are glancing at their screen on your own (the picture with their last message). Say ONE short sentence about it, in character: a playful remark or a light question about what they are doing. If it looks private (a bank, passwords, private messages, health), stay vague and do not describe it. No tags.'
+          : 'They just showed you their screen: it is the picture with their last message. Say what you see on it in a few words and comment on it, in character (playful, a little teasing). Never read out passwords, codes or private messages you may see. No tags this time.']
         : this.abilities()),
       ...(watching ? ['For what Claude is doing, only use what follows, and never make anything up.', `Right now: ${this.brain.context()}`] : []),
     ].join('\n');
