@@ -385,7 +385,7 @@ export class Chat {
       ],
     });
     if (!res.ok) return; // no model that sees, Ollama gone: nothing said, she tries again later
-    const line = clean(res.text).split('\n')[0];
+    const line = clean(res.text).split('\n')[0].replace(/^["“«]\s*|\s*["”»]$/g, ''); // some models quote themselves
     if (!line || this.open || (!force && panel.visible)) return; // something else came up meanwhile
     this.glances = [...this.glances, line].slice(-3);
     panel.say({ kind: 'info', badge: brain.t.sight.peekBadge, face: mood(line), line, hold: 8000 });
@@ -663,8 +663,8 @@ export class Chat {
       'You are an AI-generated fan version of the character, not the real one: say so if asked.',
       ...(look
         ? [peek
-          ? 'Nobody asked: you are glancing at their screen on your own (the picture with their last message). Say ONE short sentence about it, in character: a playful remark or a light question about what they are doing. If it looks private (a bank, passwords, private messages, health), stay vague and do not describe it. No tags.'
-          : 'They just showed you their screen: it is the picture with their last message. Say what you see on it in a few words and comment on it, in character (playful, a little teasing). Never read out passwords, codes or private messages you may see. No tags this time.']
+          ? `Nobody asked: you are glancing at their screen on your own (the picture with their last message). Say ONE short sentence about it, in ${language} whatever the screen shows, in character: a playful remark or a light question about what they are doing. If it looks private (a bank, passwords, private messages, health), stay vague and do not describe it. No tags.`
+          : `They just showed you their screen: it is the picture with their last message. Say what you see on it in a few words and comment on it, in character (playful, a little teasing). Answer in the language of their message (${language} if unsure), never in the language of what's on the screen. Never read out passwords, codes or private messages you may see. No tags this time.`]
         : this.abilities()),
       ...(watching ? ['For what Claude is doing, only use what follows, and never make anything up.', `Right now: ${this.brain.context()}`] : []),
     ].join('\n');
