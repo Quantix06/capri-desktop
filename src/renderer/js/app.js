@@ -188,6 +188,7 @@ async function boot() {
   // over her turns the volume, a middle click plays / pauses, and she moves to your music.
   const powers = new Powers({ capri, panel, voice, host, brain });
   capri.groove = config.groove !== false;
+  powers.mailService = config.mail || 'gmail';
   capri.onWheel = (steps) => powers.nudge(steps);
   capri.onMiddle = () => powers.toggle();
   powers.watch(capri.groove);
@@ -324,6 +325,7 @@ async function boot() {
       document.documentElement.lang = cfg.lang;
     }
     chat.configure(cfg); // her voice, her ears, whether she may look at your screen
+    powers.mailService = cfg.mail || 'gmail';
   });
 
   host.onCommand(async (cmd) => {

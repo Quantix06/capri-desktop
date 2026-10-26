@@ -207,8 +207,29 @@ export class Chat {
     this.history.push({ role: 'user', content: text }, { role: 'assistant', content: line });
     this.panel.stream(line, { done: true });
     this.panel.setFace(said.face || 'grin');
+    const lookup = done.find((d) => d.search)?.search;
+    if (lookup) this.offerSearch(lookup);
     await this.speak(said.line);
     return true;
+  }
+
+  // Something she couldn't find to open: a button to look it up on the web (or "yes" out loud).
+  offerSearch(what) {
+    const t = this.brain.t.powers;
+    const search = async () => {
+      this.pending = null;
+      this.panel.setActions([]);
+      const said = await this.powers.run({ type: 'search', query: what, site: 'web' });
+      if (!said || !this.open) return;
+      this.panel.stream(said.line, { done: true });
+      this.history.push({ role: 'assistant', content: said.line });
+      await this.speak(said.line);
+    };
+    this.panel.setActions(
+      [{ id: 'search', label: fmt(t.searchIt, { what }), primary: true }, { id: 'no', label: this.t.no }],
+      (id) => (id === 'search' ? search() : (this.pending = null, this.panel.setActions([]))),
+    );
+    this.pending = (yes) => (yes ? search() : this.panel.setActions([]));
   }
 
   // A turn with the model. look: she looks at your screen for this one ('once': you just said yes).
@@ -547,7 +568,7 @@ export class Chat {
     if (WINDOWS) {
       lines.push(
         'When (and only when) the user asks you to do one of these on their PC, say in a few words that you will, and end your answer with the matching tag. Never claim it is already done, and never add a tag they did not ask for:',
-        '- open a website: [[open: ADDRESS]]   - launch an app: [[launch: NAME]]',
+        '- open a website: [[open: ADDRESS]]   - launch an app: [[launch: NAME]]   - open their mail: [[mail]]   - open the browser: [[browser]]',
         '- search the web: [[search: WHAT]], or on a site: [[search: youtube | WHAT]] (also wikipedia, maps, images)',
         '- the music: [[media: play]], [[media: pause]], [[media: next]], [[media: previous]]; put something on: [[music: WHAT]]',
         '- the volume: [[volume: 0-100]], [[volume: up]], [[volume: down]], [[volume: mute]], [[volume: unmute]]',

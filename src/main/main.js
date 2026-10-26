@@ -293,6 +293,12 @@ function rebuildTray() {
       ],
     },
     { label: t.groove, type: 'checkbox', checked: cfg.groove, click: (item) => updateConfig({ groove: item.checked }) },
+    {
+      label: t.mail, // where "open my mail" goes
+      submenu: [['gmail', t.mailGmail], ['outlook', t.mailOutlook], ['app', t.mailApp]].map(([mail, label]) => ({
+        label, type: 'radio', checked: cfg.mail === mail, click: () => updateConfig({ mail }),
+      })),
+    },
     { label: t.wander, type: 'checkbox', checked: cfg.wander, click: (item) => updateConfig({ wander: item.checked }) },
     { label: t.possess, type: 'checkbox', checked: cfg.possess, click: (item) => updateConfig({ possess: item.checked }) },
     {

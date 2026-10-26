@@ -38,6 +38,7 @@ export class Powers {
     this.track = null;   // what's playing, as last seen: { title, artist, status }
     this.watcher = 0;
     this.lastLevel = null; // the volume as last shown, for the bar to move from
+    this.mailService = 'gmail'; // her menu: where your mail is ('gmail', 'outlook', 'app')
   }
 
   get t() {
@@ -56,6 +57,8 @@ export class Powers {
       case 'search': return this.search(cmd);
       case 'open': return this.open(cmd.target);
       case 'launch': return this.launch(cmd.target);
+      case 'mail': return this.mail();
+      case 'browser': return this.browser();
       default: return null;
     }
   }
@@ -81,7 +84,7 @@ export class Powers {
     if (!app.missing && !app.error) return this.launched(app.name);
     const site = KNOWN[simple(target)];
     if (site) return this.page(site, target);
-    return null; // neither: you were talking, not asking
+    return this.missing(target);
   }
 
   async launch(target) {
@@ -90,8 +93,43 @@ export class Powers {
     if (!app.missing) return this.launched(app.name);
     const site = KNOWN[simple(target)];
     if (site) return this.page(site, target);
+    return this.missing(target);
+  }
+
+  // Neither an app nor a site she knows: she says so, and offers to look it up on the web
+  // (`search`: the chat shows the button, or takes your "yes" out loud).
+  missing(target) {
     this.capri.perform('curious', this.capri.towardCenter());
-    return { line: fmt(this.t.notFound, { what: target }), face: 'aside', ok: false };
+    return { line: fmt(this.t.notFoundAsk, { what: target }), face: 'aside', ok: false, search: target };
+  }
+
+  // "Une page web", "internet": the browser, on its home.
+  async browser() {
+    const res = await this.host.openWeb('https://www.google.com');
+    if (res.error) return this.failed(res);
+    this.capri.cast(this.center.x, this.center.y);
+    return { line: pick(this.t.browser), face: 'smug', ok: true };
+  }
+
+  // Your mail, on the service picked in her menu: Gmail, Outlook on the web, or the Outlook app
+  // (else Windows' Mail app, else Outlook on the web).
+  async mail() {
+    const where = this.mailService || 'gmail';
+    if (where === 'app') {
+      for (const name of ['outlook', 'courrier', 'mail']) {
+        const app = await this.host.launchApp(name);
+        if (app.error) break;
+        if (!app.missing) {
+          this.capri.cast(this.center.x, this.capri.view.h - 30);
+          return { line: fmt(pick(this.t.mail), { where: app.name }), face: 'smug', ok: true };
+        }
+      }
+    }
+    const [address, name] = where === 'gmail' ? ['https://mail.google.com', 'Gmail'] : ['https://outlook.live.com/mail/', 'Outlook'];
+    const res = await this.host.openWeb(address);
+    if (res.error) return this.failed(res);
+    this.capri.cast(this.center.x, this.center.y);
+    return { line: fmt(pick(this.t.mail), { where: name }), face: 'smug', ok: true };
   }
 
   launched(name) {

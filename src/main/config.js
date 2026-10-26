@@ -26,6 +26,7 @@ const DEFAULTS = {
   speakChat: false,  // she also reads her typed answers out loud (in a spoken conversation she always does)
   ears: 'base',      // the speech recognition model (Whisper) she hears you with: 'tiny', 'base' or 'small'
   groove: true,      // she moves to your music when something's playing
+  mail: 'gmail',     // "open my mail": 'gmail', 'outlook' (on the web) or 'app' (the Outlook / Mail app)
 };
 
 let cache = null;

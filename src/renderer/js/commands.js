@@ -13,6 +13,8 @@
 //   { type: 'search', query, site }                    site: web, youtube, wikipedia, maps, images
 //   { type: 'open', target }                           a site or an app, whichever it is
 //   { type: 'launch', target }                         an app of the Start menu
+//   { type: 'mail' }                                   your mail (Gmail, Outlook: her menu says which)
+//   { type: 'browser' }                                just the browser ("une page web", "internet")
 //
 // The patterns run on a simplified copy of the text: lower case, Latin accents dropped
 // (é -> e, ç -> c, ñ -> n), Cyrillic kept as is.
@@ -38,7 +40,7 @@ const POLITE = new RegExp([
 const TAIL = /\s*(?:,?\s*(?:s'il te plait|s'il vous plait|stp|svp|please|pls|por favor|пожалуйста|capri|choom))*\s*[.!?…]*$/i;
 
 function core(text) {
-  return plain(text).replace(/\s*[,;:]\s*/g, ' ').replace(TAIL, '').replace(POLITE, '').replace(TAIL, '').trim();
+  return plain(text).replace(/\s*[,;:]\s*/g, ' ').replace(/-(?:moi|nous|toi|me|la|le)(?![\p{L}])/gu, '').replace(TAIL, '').replace(POLITE, '').replace(TAIL, '').trim();
 }
 
 const words = (s) => (s ? s.split(' ').length : 0);
@@ -97,6 +99,12 @@ const SEARCH_SITE = [
 const OPEN = /^(?:ouvr(?:e|ir|es|ez)|va sur|allez sur|aller sur|emmene-moi sur|affiche(?:r)?|open|go to|take me to|show me|pull up|bring up|abre|abrir|ve a|llevame a|abra|vai para|me leva para|открой|зайди на|перейди на|покажи)\s+(?:(?:le site|the site|the website|el sitio|o site|сайт|l'appli(?:cation)?|the app|la app|o app|приложение)\s+(?:de\s+|of\s+)?)?(.+)$/i;
 const LAUNCH = /^(?:lance(?:r|z)?|demarre(?:r|z)?|execute(?:r|z)?|launch|start|run|fire up|boot up|inicia(?:r)?|ejecuta(?:r)?|arranca(?:r)?|inicie|iniciar|executa(?:r)?|liga(?:r)?|запусти|включи приложение)\s+(?:(?:l'appli(?:cation)?|le logiciel|le programme|the app|the program|la app|el programa|o app|o programa|приложение|программу)\s+)?(.+)$/i;
 
+// What you open can be no app or site in particular: your mail (the service picked in her menu),
+// or just the browser ("une page web", "internet").
+const MINE = '(?:(?:mes|ma|mon|my|mis|mi|meus|minha|meu|мою|мои|мой)\\s+)?';
+const MAIL = new RegExp(`^(?:moi\\s+)?(?:la |le |les |the |el |o |a |une? )?${MINE}(?:boite (?:mail|e-?mail|aux lettres|de reception)|mails?|e-?mails?|courriels?|messagerie|inbox|mailbox|correos?(?: electronicos?)?|bandeja de entrada|caixa de (?:entrada|e-?mail)|почт[уаы](?: ящик)?|имейл\\S*|письма)$`, 'iu');
+const BROWSER = new RegExp(`^(?:moi\\s+)?(?:la |le |les |the |el |o |a |une? |an? |un |um |uma )?${MINE}(?:(?:nouvel(?:le)? |new |nueva |nova |novo )?(?:page(?: web| internet)?|web ?page|onglet|tab|pestana|aba|navigateur|browser|navegador|internet|le web|the web|la web|интернет|браузер|вкладку|страницу)(?: web| internet)?)$`, 'iu');
+
 // "du daft punk" -> "daft punk", "the notepad" -> "notepad"
 const tidy = (s) => String(s || '')
   .replace(/^(?:(?:un peu |a bit of |a little |un poco |um pouco |algo )?(?:de la|de l'|du|des|de|of|some|del|do|da)\s+|(?:le|la|les|l'|the|el|o|a|un|une)\s+)/i, '').replace(/["«»“”]/g, '').trim();
@@ -148,8 +156,11 @@ export function parse(text) {
     return { type: 'search', query: tidy(query), site };
   }
   const launch = LAUNCH.exec(s);
+  const open = !launch && OPEN.exec(s);
+  const target = launch?.[1] || open?.[1];
+  if (target && MAIL.test(target)) return { type: 'mail' };
+  if (target && BROWSER.test(target)) return { type: 'browser' };
   if (launch) return { type: 'launch', target: tidy(launch[1]) };
-  const open = OPEN.exec(s);
   if (open && !/(?:ecran|screen|pantalla|tela|экран)/.test(open[1])) return { type: 'open', target: tidy(open[1]) };
   return null;
 }
@@ -205,7 +216,7 @@ export function isGoodbye(text) {
 
 // The tags a model can end its answer with, and what they ask for. [[close: X]] stays with the
 // chat (it already had its own button), the others are read here.
-const TAG = /\[\[\s*(open|launch|search|media|volume|look|music)\s*:?\s*([^\]]*)\]\]/i;
+const TAG = /\[\[\s*(open|launch|search|media|volume|look|music|mail|browser)\s*:?\s*([^\]]*)\]\]/i;
 export function tagged(raw) {
   const tag = TAG.exec(String(raw || ''));
   if (!tag) return null;
@@ -214,6 +225,10 @@ export function tagged(raw) {
   switch (kind) {
     case 'look':
       return { type: 'look' };
+    case 'mail':
+      return { type: 'mail' };
+    case 'browser':
+      return { type: 'browser' };
     case 'open':
       return arg ? { type: 'open', target: tidy(arg) } : null;
     case 'launch':
