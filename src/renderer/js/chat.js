@@ -375,13 +375,16 @@ export class Chat {
     this.nextPeek = performance.now() + rand(PEEK_MIN_MS, PEEK_MAX_MS);
     capri.perform('scan');
     await new Promise((r) => setTimeout(r, 350));
-    const said = this.glances.length ? ` Don't say again what you said before: ${this.glances.join(' / ')}` : '';
+    // all in her language (see persona); what she said the last times as earlier turns, so she
+    // doesn't say it again
+    const ask = brain.t.sight.persona.ask;
     const res = await this.host.chatSend({
       id: Date.now(),
       look: 'peek',
       messages: [
         { role: 'system', content: this.persona({ look: true, peek: true }) },
-        { role: 'user', content: `(You glance at my screen on your own.)${said}` },
+        ...this.glances.flatMap((before) => [{ role: 'user', content: ask }, { role: 'assistant', content: before }]),
+        { role: 'user', content: ask },
       ],
     });
     if (!res.ok) return; // no model that sees, Ollama gone: nothing said, she tries again later
@@ -647,9 +650,15 @@ export class Chat {
     return lines;
   }
 
-  // Who she is, how she talks, and what's going on right now.
+  // Who she is, how she talks, and what's going on right now (in English, for the chat model).
   // look: they showed her their screen; peek: she glances at it on her own (not asked)
   persona({ look = false, peek = false } = {}) {
+    if (look) {
+      // looking at your screen: a short persona written in her language, with nothing in English
+      // (a small vision model drifts into the language of its instructions, or of the screen)
+      const p = this.brain.t.sight.persona;
+      return [p.who, peek ? p.peek : p.look, p.strict].join('\n');
+    }
     const language = LANGUAGE[this.brain.lang] || 'English';
     const watching = this.brain.watching; // else Claude Code isn't part of her life here
     return [
@@ -661,11 +670,7 @@ export class Chat {
       `Rules: answer in the language the user writes in (${language} if unsure). Keep it short: one to three sentences of plain text, no markdown, no lists, no emoji. Stay in character.`,
       ...(this.spoken ? ['You are talking out loud with them: one or two short sentences, easy to say.'] : []),
       'You are an AI-generated fan version of the character, not the real one: say so if asked.',
-      ...(look
-        ? [peek
-          ? `Nobody asked: you are glancing at their screen on your own (the picture with their last message). Say ONE short sentence about it, in ${language} whatever the screen shows, in character: a playful remark or a light question about what they are doing. If it looks private (a bank, passwords, private messages, health), stay vague and do not describe it. No tags.`
-          : `They just showed you their screen: it is the picture with their last message. Say what you see on it in a few words and comment on it, in character (playful, a little teasing). Answer in the language of their message (${language} if unsure), never in the language of what's on the screen. Never read out passwords, codes or private messages you may see. No tags this time.`]
-        : this.abilities()),
+      ...this.abilities(),
       ...(watching ? ['For what Claude is doing, only use what follows, and never make anything up.', `Right now: ${this.brain.context()}`] : []),
     ].join('\n');
   }
