@@ -7,6 +7,7 @@ import { Brain } from './brain.js';
 import { Guide } from './guide.js';
 import { Mission } from './mission.js';
 import { Chat } from './chat.js';
+import { Powers } from './powers.js';
 import { LINES } from './lines.js';
 import { pick, fmt, reducedMotion } from './util.js';
 
@@ -183,8 +184,17 @@ async function boot() {
   // Her guide (guide.js): her welcome on first launch, and "How does it work?" in her menu,
   // where she takes you to things and points at them.
   const guide = new Guide({ capri, panel, voice, host, brain });
-  // Talking to her (chat.js): "Talk to her" in her menu, or the button when you click her idle.
-  const chat = new Chat({ capri, panel, voice, host, brain });
+  // Her hands on the PC (powers.js): the music, the volume, apps, the web, when you ask. The wheel
+  // over her turns the volume, a middle click plays / pauses, and she moves to your music.
+  const powers = new Powers({ capri, panel, voice, host, brain });
+  capri.groove = config.groove !== false;
+  capri.onWheel = (steps) => powers.nudge(steps);
+  capri.onMiddle = () => powers.toggle();
+  powers.watch(capri.groove);
+  // Talking to her (chat.js): "Talk to her" in her menu, or the button when you click her idle;
+  // out loud: "Talk to her out loud" in her menu, or Ctrl+Alt+V.
+  const chat = new Chat({ capri, panel, voice, host, brain, powers });
+  chat.configure(config);
   brain.onTalk = () => chat.start();
   // the first Claude Code event that ever reaches her: so you know it worked
   brain.linked = config.linked;
@@ -295,6 +305,10 @@ async function boot() {
     capri.wander = cfg.wander;
     capri.possessWindows = cfg.possess;
     capri.restOn = cfg.rest || 'corner';
+    if ((cfg.groove !== false) !== capri.groove) {
+      capri.groove = cfg.groove !== false;
+      powers.watch(capri.groove);
+    }
     applyMotion(cfg.motion);
     if (cfg.claude === false && brain.watching) {
       // no longer watching Claude Code: whatever it was in the middle of is no business of hers
@@ -309,6 +323,7 @@ async function boot() {
       panel.labels = LINES[cfg.lang] || LINES.fr;
       document.documentElement.lang = cfg.lang;
     }
+    chat.configure(cfg); // her voice, her ears, whether she may look at your screen
   });
 
   host.onCommand(async (cmd) => {
@@ -325,6 +340,16 @@ async function boot() {
         break;
       case 'chat': // "Talk to her" in her menu
         chat.start();
+        break;
+      case 'voice': // "Talk to her out loud" in her menu, Ctrl+Alt+V: on, or off again
+        if (chat.spoken) chat.stopVoice({ bye: true });
+        else chat.startVoice();
+        break;
+      case 'look': // "Look at my screen" in her menu: as if you'd asked her in her chat
+        if (await chat.start()) chat.send(t.sight.prompt);
+        break;
+      case 'heard': // --dev: as if she had heard `text` out loud (no microphone needed)
+        if (chat.open) chat.send(cmd.text || '');
         break;
       case 'report': // "Mission report" in her menu
         if (capri.stowed) {

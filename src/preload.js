@@ -38,4 +38,13 @@ contextBridge.exposeInMainWorld('host', {
   findApp: (wanted) => ipcRenderer.invoke('apps:find', wanted),
   closeApp: (name, force) => ipcRenderer.invoke('apps:close', { name, force: Boolean(force) }),
   focusOverlay: (on) => ipcRenderer.send('overlay:focus', Boolean(on)),
+  // what she does when you ask her (system.js): each resolves with { error } when it didn't work
+  nowPlaying: () => ipcRenderer.invoke('system:playing'),
+  media: (action) => ipcRenderer.invoke('system:media', String(action)),
+  volume: (change) => ipcRenderer.invoke('system:volume', change || {}),
+  launchApp: (wanted) => ipcRenderer.invoke('system:launch', String(wanted)),
+  openWeb: (address) => ipcRenderer.invoke('system:open', String(address)),
+  searchWeb: (site, query) => ipcRenderer.invoke('system:search', { site: String(site), query: String(query) }),
+  playMusic: (query) => ipcRenderer.invoke('system:music', String(query)),
+  setVoices: (names) => ipcRenderer.send('voices:list', names),
 });

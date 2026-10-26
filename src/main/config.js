@@ -20,6 +20,12 @@ const DEFAULTS = {
   rest: 'corner',    // where she rests when nothing's going on: 'corner', or 'taskbar' (sitting on it)
   motion: 'auto',    // her animations: 'auto' (like Windows' animation effects), 'full' or 'reduced'
   motionAsked: false, // she asked once, Windows' animations being off, whether to move anyway
+  sight: false,      // she may look at your screen when you ask her to (off: she asks you each time)
+  visionModel: null, // the Ollama model she looks with (null: the chat model if it sees, else the first that does)
+  voiceName: null,   // her voice out loud, a voice of the system (null: the first one in her language)
+  speakChat: false,  // she also reads her typed answers out loud (in a spoken conversation she always does)
+  ears: 'base',      // the speech recognition model (Whisper) she hears you with: 'tiny', 'base' or 'small'
+  groove: true,      // she moves to your music when something's playing
 };
 
 let cache = null;

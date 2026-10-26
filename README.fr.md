@@ -127,8 +127,8 @@ reste sur ton PC, un jour à la fois.
 
 **Lui parler** dans son menu (ou le bouton **Parle-moi** quand tu cliques sur elle et qu'il ne se passe rien) : tu
 écris dans son panneau et elle te répond, dans son personnage, grâce à un modèle d'IA qui tourne sur ton PC avec
-[Ollama](https://ollama.com). Elle sait ce que fait Claude et ce qu'il a fait aujourd'hui. Elle répond par écrit,
-dans sa langue.
+[Ollama](https://ollama.com). Elle sait ce que fait Claude et ce qu'il a fait aujourd'hui. Elle répond par écrit (ou à
+voix haute : voir « Lui parler à voix haute »), dans sa langue.
 
 1. Installe Ollama et ouvre-le.
 2. Dans un terminal : `ollama pull llama3.2` (environ 2 Go). N'importe quel modèle de chat marche : choisis-le dans
@@ -142,21 +142,85 @@ fan d'elle, et le panneau du chat le dit à chaque fois.
 bouton au nom de l'appli. Rien ne se passe tant que tu ne cliques pas. Elle la ferme comme son propre bouton de
 fermeture, donc l'appli peut encore te demander d'enregistrer. Si elle s'est seulement cachée dans la zone de
 notification, elle te propose **Forcer la fermeture**, là encore seulement sur ton clic (le travail non enregistré est
-alors perdu). Elle ne ferme jamais les morceaux de Windows, Claude, Ollama ni elle-même, et elle ne peut rien faire
-d'autre sur ton PC.
+alors perdu). Elle ne ferme jamais les morceaux de Windows, Claude, Ollama ni elle-même. En vocal, tu confirmes en
+disant « oui ».
+
+### Elle fait des choses pour toi (Windows)
+
+Demande-lui dans son chat, ou à voix haute : elle comprend tout de suite les demandes simples, dans ses cinq langues,
+sans passer par l'IA (c'est instantané et ça marche même avec un tout petit modèle). Pour le reste, le modèle peut
+lui-même demander une de ces actions, mais seulement si ton message demandait quelque chose. Plusieurs à la fois,
+ça marche aussi : « mets le volume à 30 et ouvre YouTube ».
+
+| Tu dis | Elle fait | Sa réaction |
+|---|---|---|
+| « ouvre YouTube », « va sur reddit.com » | ouvre la page dans ton navigateur (ou l'appli du même nom si tu l'as) | elle lance son bras vers l'écran, un éclair rouge au bout des doigts |
+| « lance Spotify », « démarre le bloc-notes » | lance l'appli depuis le menu Démarrer | pareil, vers la barre des tâches |
+| « cherche des recettes de crêpes », « cherche lofi girl sur YouTube » | une recherche Google (ou YouTube, Wikipédia, Maps, Images) | pareil |
+| « pause », « reprends la musique », « chanson suivante », « précédente » | pilote ce qui joue (Spotify, navigateur, AM Music… tout ce que le panneau média de Windows voit) | elle se tait la tête basse, danse, ou balaie l'air du bras |
+| « c'est quoi cette musique ? » | te dit le titre et l'artiste | elle tend l'oreille |
+| « mets du Daft Punk » | le cherche sur Spotify s'il est installé, sinon sur YouTube Music | elle danse |
+| « volume à 30 », « monte le son », « baisse un peu », « à fond », « coupe le son » | le volume du PC | une barre de volume à côté de sa tête ; bras levés pour monter, mains poussées vers le bas pour baisser |
+| « baisse Spotify », « volume de Discord à 20 » | le curseur de cette appli dans le mélangeur de volume de Windows | pareil, avec le nom de l'appli |
+
+Ce qu'elle ne fait jamais : toucher à tes fichiers, à tes réglages ou à tes messages. Une appli n'est lancée que si
+elle est dans ton menu Démarrer, et une page ne s'ouvre qu'en `http(s)`.
+
+Et sans rien lui demander :
+- **La molette** sur elle règle le volume (une barre s'affiche à côté de sa tête), **le clic du milieu** met la musique
+  en pause ou la relance.
+- **Quand ta musique joue**, elle danse dessus de temps en temps (des notes s'envolent de sa crinière), et commente
+  parfois un nouveau morceau. Son menu › **Bouger sur ma musique** pour la calmer.
+
+### Elle regarde ton écran (quand tu le demandes)
+
+« Regarde mon écran », « qu'est-ce que tu vois ? », ou son menu › **Regarder mon écran** : sa tête se redresse, ses
+yeux en gros plan, une ligne rouge descend tout l'écran et ses coins se verrouillent, puis elle te dit ce qu'elle voit
+et le commente, dans son personnage.
+
+- **Ta permission d'abord.** Par défaut elle demande à chaque fois (**Toujours**, **Juste cette fois**, **Non**, ou
+  « oui » à voix haute). Son menu › **Voir mon écran quand je le demande** la laisse regarder sans demander. Elle ne
+  regarde jamais d'elle-même.
+- **Une seule image**, de l'écran où elle est, prise au moment où tu le demandes, sans elle dessus, envoyée au modèle
+  local puis jetée. Rien n'est enregistré.
+- **Il faut un modèle qui voit** les images : `ollama pull gemma3` (environ 3 Go ; `llava`, `qwen2.5vl`, `minicpm-v`…
+  marchent aussi). Elle le trouve toute seule ; son menu › **Modèle qui voit (Ollama)** pour en choisir un autre. Si ton
+  modèle de chat voit déjà les images, elle s'en sert.
+
+### Lui parler à voix haute
+
+Son menu › **Lui parler à voix haute**, **Ctrl+Alt+V** n'importe où, ou le bouton **VOIX** de son chat : elle t'écoute
+(des arcs de son autour de sa tête, verts quand c'est toi qui parles), te répond **à voix haute**, puis t'écoute à
+nouveau. Tout ce qu'elle sait faire marche aussi à l'oral : « baisse le son », « ouvre YouTube », « regarde mon
+écran », et « oui » pour confirmer. « Au revoir » ou « stop », Ctrl+Alt+V ou ✕ pour arrêter ; si tu ne dis rien,
+elle demande si tu es toujours là, puis coupe le micro. Tu peux toujours écrire pendant ce temps.
+
+- **Ses oreilles** : [Whisper](https://github.com/openai/whisper), un modèle de reconnaissance vocale qui tourne **sur
+  ton PC** (sur la carte graphique quand il y en a une, via [transformers.js](https://github.com/huggingface/transformers.js)).
+  La première fois, elle te demande avant de le télécharger depuis Hugging Face (environ 210 Mo, une seule fois).
+  Son menu › **Sa voix** › **Reconnaissance vocale** : *tiny* (plus rapide), *base* (par défaut), *small* (plus
+  précis, plus lourd).
+- **Sa voix** : une des voix de Windows (Hortense, Julie, Paul en français…), rien à installer. Son menu › **Sa voix**
+  pour la choisir, et **Lire ses réponses écrites à voix haute** si tu veux l'entendre aussi quand tu écris.
+- **Le micro** n'est allumé que pendant une conversation vocale, et coupé quand elle parle (pour qu'elle ne s'entende
+  pas elle-même). Ta voix ne quitte jamais ton PC. S'il ne marche pas : Paramètres Windows › Confidentialité ›
+  Microphone › autoriser les applis de bureau.
 
 Elle n'attrape la souris que sur son corps (au pixel près) : tout le reste de l'écran reste utilisable normalement.
 
 - **Clic** sur elle : elle te dit où en est Claude (s'il ne se passe rien : un bouton **Parle-moi**, pour discuter
   avec elle).
 - **Glisser** : tu la déplaces.
+- **Molette** sur elle : le volume. **Clic du milieu** : pause / lecture.
+- **Ctrl+Alt+V** : une conversation à voix haute (et Ctrl+Alt+V à nouveau pour l'arrêter).
 - **Clic** sur le panneau : il se ferme.
 - **Ctrl+Alt+C** : elle se range (dans son biochip, comme dans la série) et il ne reste d'elle que son masque, les yeux
   fermés, en bas à gauche de l'écran. Ses yeux ne s'ouvrent que quand Claude a besoin de toi. Clique sur le masque
   (ou refais Ctrl+Alt+C) pour la faire revenir.
 - **Son menu** : clic droit sur elle (il est aussi sur son icône près de l'horloge) : téléporter, regarder le satellite,
-  démo, comment ça marche, rapport de mission, lui parler, taille, son, écran, modèle IA, se balader,
-  posséder tes fenêtres, langue, lancement au démarrage, hooks.
+  démo, comment ça marche, rapport de mission, lui parler, lui parler à voix haute, regarder mon écran, taille, son,
+  écran, modèle IA, voir mon écran, modèle qui voit, sa voix, bouger sur ma musique, se balader, posséder tes fenêtres,
+  langue, lancement au démarrage, hooks.
 
 Elle parle **français, anglais, espagnol, portugais du Brésil et russe**, et choisit toute seule la langue de ton
 système. Tu peux en choisir une autre dans son menu.
@@ -258,6 +322,10 @@ avec ces noms (`.mp3`, `.wav`, `.ogg` ou `.m4a`) :
 - Ce qu'elle change sur ton système : le hook dans `~/.claude/settings.json` (une sauvegarde est faite avant, et tu peux
   le retirer depuis son menu), et une entrée au démarrage seulement si tu coches « Lancer au démarrage ». Elle se
   désinstalle comme n'importe quelle app, depuis Paramètres Windows › Applications.
+- Ce qu'elle peut faire quand tu le lui demandes : la musique, le volume, lancer une appli du menu Démarrer, ouvrir une
+  page web ou une recherche, fermer une appli (après ton clic ou ton « oui »), regarder ton écran (avec ta permission).
+  Rien d'autre : ni tes fichiers, ni tes réglages, ni tes messages. Un petit script PowerShell (`src/main/system.ps1`,
+  à lire) fait ces gestes pour elle.
 - L'avertissement de SmartScreen vient du fait que l'installeur n'est pas signé, pas de ce qu'il fait.
 
 ## FAQ
@@ -287,6 +355,11 @@ Le contenu de tes fichiers n'est jamais transmis : pour une écriture, seule sa 
 Son chat va à Ollama sur ton PC (`127.0.0.1:11434`, ou `OLLAMA_HOST`) avec ce qu'elle sait du moment (le nom du
 projet, la dernière action de Claude, les compteurs du jour). Son journal de mission reste dans son propre stockage,
 sur ton PC.
+
+Quand tu lui demandes de regarder ton écran, l'image va au même Ollama local, pour cette réponse seulement, puis elle
+est jetée. En conversation vocale, ta voix est transcrite sur ton PC (Whisper) et n'est jamais envoyée ni enregistrée.
+Les deux seules connexions vers l'extérieur sont celles que tu demandes : le téléchargement unique du modèle Whisper
+depuis Hugging Face (après ton accord), et les pages ou recherches qu'elle ouvre dans ton navigateur.
 
 ## Direction artistique
 
@@ -358,6 +431,8 @@ src/main/                Electron : fenêtre transparente plein écran, clic à 
   windows.js / .ps1      où sont les autres fenêtres (Windows), pour qu'elle s'assoie dessus
   ollama.js              son chat : le modèle local, via Ollama
   apps.js                fermer une appli que tu lui demandes de fermer (après ton clic)
+  system.js / .ps1       ses mains sur le PC : musique, volume (le PC ou une appli), applis du menu Démarrer, pages web
+  sight.js               une image de ton écran, quand tu lui demandes de regarder
 src/renderer/js/
   sprite.js              shader WebGL : tête, crinière, position assise, smears, images rémanentes, couleurs, glitch
   acting.js              les feuilles d'exposition : chaque mouvement, dessin par dessin
@@ -367,7 +442,11 @@ src/renderer/js/
   guide.js               son guide : les tutos, aller jusqu'aux choses et les montrer du doigt
   brain.js               traduit les événements Claude en répliques et en actions
   mission.js             le journal de mission du jour, pour son rapport
-  chat.js                lui parler : la conversation, qui elle est, ses réponses qui arrivent
+  chat.js                lui parler : la conversation, qui elle est, ses réponses qui arrivent, la conversation vocale
+  commands.js            ce que tu lui demandes de faire, lu directement dans tes mots (5 langues, sans IA)
+  powers.js              le faire : musique, volume, applis, web, avec la réaction qui va avec ; molette, clic du milieu, danser sur ta musique
+  ears.js                ses oreilles : le micro, la détection de ta voix, et Whisper (ears-worker.js, ears-worklet.js)
+  speech.js              sa voix : ses réponses lues avec une voix de Windows
   lines.js               ce qu'elle dit (FR / EN / ES / PT / RU)
   chip.js                son masque : quand elle dort, et en bas à gauche quand tu la ranges
   voice.js               les sons
@@ -375,7 +454,10 @@ src/renderer/js/
 
 Pour bosser dessus : `npm run dev` active des routes de debug sur le bridge (`/debug/capture` enregistre une image de la fenêtre dans `captures/`,
 `/debug/testwin` ouvre des fenêtres de test sur lesquelles elle peut s'asseoir, une par nom, `/debug/mouse` bouge et clique un pointeur
-factice sur la fenêtre de Capri, sans toucher au vrai, `/debug/type` écrit dans son chat).
+factice sur la fenêtre de Capri, sans toucher au vrai, `/debug/type` écrit dans son chat, `/debug/command` avec
+`{"name":"heard","text":"…"}` fait comme si elle l'avait entendu à voix haute).
+Si Capri installée tourne déjà, lance la version de dev à côté avec son propre dossier de données et son propre port :
+`CAPRI_PORT=47899 npx electron . --dev --user-data-dir=<un dossier>`.
 `npm run dist` fabrique l'installeur Windows dans `dist/`.
 
 ## Crédits et droits

@@ -59,7 +59,13 @@ export class Panel {
     this.chatInput = panel.querySelector('.panel__input');
     this.chatSend = panel.querySelector('.panel__send');
     this.chatClose = panel.querySelector('.panel__close');
+    this.chatMic = panel.querySelector('.panel__mic'); // a spoken conversation, on or off
+    this.voiceState = null; // out loud: 'on' | 'listening' | 'hearing' | 'speaking', or null
     this.note = panel.querySelector('.panel__note');
+    this.chatMic.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.current?.onMic?.();
+    });
     this.chatForm.addEventListener('click', (e) => e.stopPropagation());
     this.chatForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -96,8 +102,8 @@ export class Panel {
   // face: her expression (a key of FACES), instead of the one for its kind
   // report: her report card, { date, hero: { value, label }, stats: [{ value, label, hot }],
   //         longest: { label, project, time }, foot }
-  // chat: a line to type to her, { placeholder, send, close, noteTag, note }; onSend(text) gets
-  //       what you typed
+  // chat: a line to type to her, { placeholder, send, close, mic, noteTag, note }; onSend(text)
+  //       gets what you typed, onMic() the mic button (a spoken conversation, on or off)
   // onLeave: () => void, when this message goes (closed, timed out or replaced)
   say(msg) {
     const cur = this.current;
@@ -262,6 +268,11 @@ export class Panel {
     this.chatSend.disabled = false;
     this.chatSend.textContent = chat.send;
     this.chatClose.setAttribute('aria-label', chat.close);
+    this.chatMic.textContent = chat.mic?.button || 'MIC';
+    this.chatMic.title = chat.mic?.label || '';
+    this.chatMic.setAttribute('aria-label', chat.mic?.label || '');
+    this.chatMic.hidden = !chat.mic;
+    this.setVoice(null);
     const tag = document.createElement('b');
     tag.textContent = chat.noteTag;
     this.note.replaceChildren(tag, ` ${chat.note}`);
@@ -294,7 +305,20 @@ export class Panel {
   setChatBusy(busy) {
     this.chatInput.disabled = busy;
     this.chatSend.disabled = busy;
-    if (!busy && this.current?.chat) this.chatInput.focus();
+    if (!busy && this.current?.chat && !this.voiceState) this.chatInput.focus();
+  }
+
+  // A spoken conversation: where it's at, in the corner of her chat (● LISTENING...), and the
+  // mic button lit. null: back to typing.
+  setVoice(state) {
+    this.voiceState = state;
+    const chat = this.current?.chat;
+    this.el.dataset.voice = state || '';
+    this.chatMic.setAttribute('aria-pressed', state ? 'true' : 'false');
+    if (!chat) return;
+    const words = chat.mic || {};
+    this.state.textContent = state ? (words[state] || words.on || '') : (this.current.badge || '');
+    this.chatInput.placeholder = state ? (words.typeToo || chat.placeholder) : chat.placeholder;
   }
 
   // A button of the message on screen says something else now ("Copied").

@@ -14,6 +14,8 @@ const { createBridge } = require('./bridge');
 const { startWindowWatch } = require('./windows');
 const ollama = require('./ollama');
 const apps = require('./apps');
+const system = require('./system');
+const sight = require('./sight');
 const hooks = require('../../scripts/install-hooks');
 const demoSteps = require('../../scripts/demo-sequence');
 
@@ -36,6 +38,8 @@ let windowWatch = null;
 // the watcher only speaks when something changes: the overlay asks for this when it (re)loads
 let lastWindows = null;
 let chatModels = null; // the Ollama models, as last seen (null: Ollama not reached)
+let visionModels = []; // those of them that can look at a picture (her look at your screen)
+let voices = []; // the system's voices in her language, as the overlay found them (her voice out loud)
 const chats = new Map(); // id -> AbortController of an answer being streamed
 
 const userSoundsDir = () => path.join(app.getPath('userData'), 'sounds');
@@ -217,6 +221,8 @@ function rebuildTray() {
     { label: t.help, click: () => sendCommand('welcome') },
     ...(cfg.claude ? [{ label: t.report, click: () => sendCommand('report') }] : []),
     { label: t.talk, click: () => sendCommand('chat') },
+    { label: t.voice, accelerator: 'Ctrl+Alt+V', click: () => sendCommand('voice') },
+    { label: t.look, click: () => sendCommand('look') },
     { label: cfg.visible ? t.hide : t.show, accelerator: 'Ctrl+Alt+C', click: () => toggleVisible() },
     { type: 'separator' },
     {
@@ -257,6 +263,36 @@ function rebuildTray() {
         }))
         : [{ label: t.noOllama, enabled: false }],
     },
+    // her look at your screen: whether she may, and the model she looks with
+    { label: t.sight, type: 'checkbox', checked: cfg.sight, click: (item) => updateConfig({ sight: item.checked }) },
+    {
+      label: t.visionModel,
+      submenu: visionModels.length
+        ? visionModels.map((name) => ({
+          label: name, type: 'radio', checked: name === pickVision(cfg), click: () => updateConfig({ visionModel: name }),
+        }))
+        : [{ label: chatModels ? t.noVision : t.noOllama, enabled: false }],
+    },
+    // her voice out loud, and her ears
+    {
+      label: t.speech,
+      submenu: [
+        { label: t.speakChat, type: 'checkbox', checked: cfg.speakChat, click: (item) => updateConfig({ speakChat: item.checked }) },
+        { type: 'separator' },
+        { label: t.herVoice, enabled: false },
+        ...(voices.length
+          ? voices.map((name, i) => ({
+            label: name, type: 'radio', checked: cfg.voiceName ? name === cfg.voiceName : i === 0, click: () => updateConfig({ voiceName: name }),
+          }))
+          : [{ label: t.noVoice, enabled: false }]),
+        { type: 'separator' },
+        { label: t.ears, enabled: false },
+        ...[['tiny', t.earsTiny], ['base', t.earsBase], ['small', t.earsSmall]].map(([ears, label]) => ({
+          label, type: 'radio', checked: cfg.ears === ears, click: () => updateConfig({ ears }),
+        })),
+      ],
+    },
+    { label: t.groove, type: 'checkbox', checked: cfg.groove, click: (item) => updateConfig({ groove: item.checked }) },
     { label: t.wander, type: 'checkbox', checked: cfg.wander, click: (item) => updateConfig({ wander: item.checked }) },
     { label: t.possess, type: 'checkbox', checked: cfg.possess, click: (item) => updateConfig({ possess: item.checked }) },
     {
@@ -325,10 +361,26 @@ function pickModel(cfg = config.load()) {
   return chatModels.includes(cfg.chatModel) ? cfg.chatModel : chatModels[0];
 }
 
+// The model she looks at your screen with: the one picked in her menu, else the one she talks
+// with if it sees, else the first one that sees. Null: none of them can.
+function pickVision(cfg = config.load()) {
+  if (!visionModels.length) return null;
+  if (visionModels.includes(cfg.visionModel)) return cfg.visionModel;
+  const talking = pickModel(cfg);
+  return visionModels.includes(talking) ? talking : visionModels[0];
+}
+
 async function refreshModels() {
-  chatModels = await ollama.models().catch(() => null);
+  const found = await ollama.catalog().catch(() => null);
+  chatModels = found && found.map((m) => m.name);
+  visionModels = found ? found.filter((m) => m.vision).map((m) => m.name) : [];
   rebuildTray();
   return chatModels;
+}
+
+// What she sees of your screen, for one answer: a picture of the screen she's on.
+function lookAtScreen() {
+  return sight.capture({ display: targetDisplay(), overlay });
 }
 
 function createTray() {
@@ -367,14 +419,25 @@ function registerIpc() {
     ollama.warm(pickModel()); // loading while you type your first message
     return { ok: true, model: pickModel() };
   });
-  // her answer, streamed to the overlay piece by piece as `chat:delta`
-  ipcMain.handle('chat:send', async (_e, { id, messages }) => {
+  // her answer, streamed to the overlay piece by piece as `chat:delta`. look: she looks at your
+  // screen for this one (her menu lets her, or `once`: you just said yes), with a model that sees.
+  ipcMain.handle('chat:send', async (_e, { id, messages, look = false }) => {
     const abort = new AbortController();
     chats.set(id, abort);
     try {
       const send = (text) => overlay?.webContents.send('chat:delta', { id, text });
-      const text = await ollama.chat({ model: pickModel(), messages }, send, abort.signal);
-      return { ok: true, text };
+      let model = pickModel();
+      if (look) {
+        if (!config.load().sight && look !== 'once') return { ok: false, error: 'nosight' };
+        await refreshModels();
+        model = pickVision();
+        if (!model) return { ok: false, error: 'novision' };
+        const image = await lookAtScreen();
+        const last = messages.at(-1);
+        messages = [...messages.slice(0, -1), { ...last, images: [image] }]; // that picture, only in this request
+      }
+      const text = await ollama.chat({ model, messages, long: Boolean(look) }, send, abort.signal);
+      return { ok: true, text, model };
     } catch (err) {
       return { ok: false, error: abort.signal.aborted ? 'stopped' : err.message };
     } finally {
@@ -388,6 +451,43 @@ function registerIpc() {
   ipcMain.handle('apps:list', async () => (await apps.list().catch(() => [])).map(appInfo));
   ipcMain.handle('apps:find', async (_e, wanted) => appInfo(await apps.find(wanted).catch(() => null)));
   ipcMain.handle('apps:close', (_e, { name, force }) => apps.close(name, { force }).catch((err) => ({ error: err.message })));
+  // what she does when you ask her (system.js): the music, the volume, launching an app, the web.
+  // Every one answers { error } instead of throwing, so she can say it didn't work.
+  const safely = (fn) => async (_e, arg) => {
+    try {
+      return await fn(arg);
+    } catch (err) {
+      return { error: err.message };
+    }
+  };
+  ipcMain.handle('system:playing', safely(async () => ({ playing: await system.playing() })));
+  ipcMain.handle('system:media', safely((action) => system.media(action)));
+  ipcMain.handle('system:volume', safely((change) => system.volume(change)));
+  ipcMain.handle('system:launch', safely(async (wanted) => {
+    const app = await system.findLaunchable(wanted);
+    if (!app) return { missing: true };
+    return system.launch(app.id);
+  }));
+  ipcMain.handle('system:open', safely(async (address) => {
+    const url = system.webAddress(address);
+    if (!url) return { invalid: true };
+    await shell.openExternal(url);
+    return { url, host: new URL(url).hostname.replace(/^www\./, '') };
+  }));
+  ipcMain.handle('system:search', safely(async ({ site, query }) => {
+    await shell.openExternal(system.searchUrl(site, query));
+    return { ok: true };
+  }));
+  ipcMain.handle('system:music', safely(async (query) => {
+    const found = await system.musicSearch(query);
+    await shell.openExternal(found.url);
+    return { where: found.where };
+  }));
+  // her voices out loud: the overlay knows them (speechSynthesis), her menu lists them
+  ipcMain.on('voices:list', (_e, list) => {
+    voices = Array.isArray(list) ? list.map(String).slice(0, 30) : [];
+    rebuildTray();
+  });
   // typing to her: the overlay takes the keyboard while the chat is open, and gives it back after
   ipcMain.on('overlay:focus', (_e, on) => {
     if (!overlay) return;
@@ -533,6 +633,7 @@ function main() {
       onDebug: DEV ? debugHandler : null,
     });
     globalShortcut.register('Control+Alt+C', () => toggleVisible());
+    globalShortcut.register('Control+Alt+V', () => sendCommand('voice')); // a spoken conversation, or the end of it
     refreshModels(); // for her menu's model list
     screen.on('display-metrics-changed', fitOverlay);
     screen.on('display-added', () => { fitOverlay(); rebuildTray(); });
@@ -542,6 +643,7 @@ function main() {
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
     windowWatch?.stop();
+    system.stop();
   });
   app.on('window-all-closed', (e) => e.preventDefault());
 }
