@@ -41,7 +41,12 @@ public static class CapriWindows {
 
   public static string Snapshot(long self) {
     var sb = new StringBuilder();
-    sb.Append("{\"fg\":").Append(GetForegroundWindow().ToInt64()).Append(",\"wins\":[");
+    IntPtr fg = GetForegroundWindow();
+    var fgClass = new StringBuilder(64);
+    GetClassName(fg, fgClass, 64);
+    // the taskbar clicked: it comes up over her (Windows has no levels among windows on top)
+    bool taskbar = fgClass.ToString() == "Shell_TrayWnd" || fgClass.ToString() == "Shell_SecondaryTrayWnd";
+    sb.Append("{\"fg\":").Append(fg.ToInt64()).Append(",\"taskbar\":").Append(taskbar ? "true" : "false").Append(",\"wins\":[");
     int count = 0;
     EnumWindows((h, l) => {
       if (count >= 40) return false;

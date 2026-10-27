@@ -1,6 +1,6 @@
 # Her hands on the PC (Windows only), for what you ask her out loud or in her chat: the music
-# (play, pause, next...), the volume (the whole PC's, or one app's), and the apps of the Start
-# menu (listing them, launching one). Nothing else: no files, no settings, no window contents.
+# (play, pause, next...) and the volume (the whole PC's, or one app's). Nothing else: no files,
+# no settings, no window contents. (Apps and games: launch.js.)
 #
 # Started once by system.js and kept running (compiling the audio bits takes a second, every
 # call after that is instant). Reads one JSON request per line on stdin, answers one JSON line
@@ -11,8 +11,6 @@
 #   {"id":3,"op":"volume","set":40}                    -> {"id":3,"level":40,"muted":false,"app":""}
 #   {"id":4,"op":"volume","app":"spotify","delta":-10} -> one app's own slider in the mixer
 #   {"id":5,"op":"sessions"}                           -> the apps making sound right now
-#   {"id":6,"op":"apps"}                               -> the Start menu: [{name,id}]
-#   {"id":7,"op":"launch","appId":"..."}               -> {"id":7,"ok":true}
 #
 #   powershell -File system.ps1 <capri pid>
 
@@ -290,14 +288,6 @@ function Handle($req) {
       return [CapriAudio.Mixer]::Master($set, $delta, $mute)
     }
     'sessions' { return [ordered]@{ sessions = @([CapriAudio.Mixer]::Sessions()) } }
-    'apps' {
-      $apps = @(Get-StartApps | ForEach-Object { [ordered]@{ name = $_.Name; id = $_.AppID } })
-      return [ordered]@{ apps = $apps }
-    }
-    'launch' {
-      Start-Process -FilePath 'explorer.exe' -ArgumentList "shell:AppsFolder\$($req.appId)"
-      return [ordered]@{ ok = $true }
-    }
     default { throw "unknown op $($req.op)" }
   }
 }

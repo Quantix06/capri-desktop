@@ -339,7 +339,20 @@ export const SPRITE = {
 export class SpriteRenderer {
   constructor(canvas, image) {
     this.canvas = canvas;
-    const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
+    this.image = image;
+    this.scale = null;
+    this.setup();
+    // the GPU can be reset (waking from sleep, a driver update): without this she'd stay gone
+    canvas.addEventListener('webglcontextlost', (e) => e.preventDefault());
+    canvas.addEventListener('webglcontextrestored', () => {
+      this.setup();
+      if (this.scale) this.resize(this.scale);
+    });
+  }
+
+  // Her shader and picture on the GPU (again, after a reset).
+  setup() {
+    const gl = this.canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
     if (!gl) throw new Error('WebGL unavailable');
     this.gl = gl;
 
@@ -368,7 +381,7 @@ export class SpriteRenderer {
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.image);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -390,6 +403,7 @@ export class SpriteRenderer {
   }
 
   resize(scale) {
+    this.scale = scale;
     const dpr = window.devicePixelRatio || 1;
     const { width, height } = SpriteRenderer.cssSize(scale);
     this.canvas.style.width = `${width}px`;

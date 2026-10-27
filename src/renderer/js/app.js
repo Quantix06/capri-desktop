@@ -8,7 +8,9 @@ import { Guide } from './guide.js';
 import { Mission } from './mission.js';
 import { Chat } from './chat.js';
 import { Powers } from './powers.js';
-import { LINES } from './lines.js';
+import { Setup } from './setup.js';
+import { Custom } from './custom.js';
+import { linesFor } from './lines.js';
 import { pick, fmt, reducedMotion } from './util.js';
 
 const host = window.host;
@@ -24,6 +26,10 @@ function loadImage(src) {
 
 // close-ups of her for the cut-ins, frames of the show (tools/build-cutins.py)
 const CUTINS = ['grin', 'laugh', 'eyes', 'many', 'look'];
+const WATCH_MS = 2000; // how often she checks the pointer still reaches her
+
+// what you made her, from the config (custom.js)
+const mine = (cfg) => ({ userName: cfg.userName || '', persona: cfg.persona || '', myLines: cfg.myLines || [], memories: cfg.memories || [] });
 
 async function boot() {
   const [config, image, intro, ...cutins] = await Promise.all([
@@ -66,7 +72,7 @@ async function boot() {
   const panel = new Panel({
     panel: document.getElementById('panel'),
     ticker: document.getElementById('ticker'),
-    labels: LINES[config.lang] || LINES.fr,
+    labels: linesFor(config.lang, config.assistant),
   });
 
   const capri = new Capri({
@@ -83,7 +89,7 @@ async function boot() {
   capri.setScale(config.scale);
 
   const mission = new Mission();
-  const brain = new Brain({ capri, panel, voice, host, mission, lang: config.lang });
+  const brain = new Brain({ capri, panel, voice, host, mission, lang: config.lang, assistant: config.assistant });
 
   // Click-through everywhere except on her body, the panel and her biochip.
   let interactive = false;
@@ -124,7 +130,9 @@ async function boot() {
       }, 400);
     }
   };
+  let lastMove = 0;
   window.addEventListener('mousemove', (e) => {
+    lastMove = performance.now();
     mouse = { x: e.clientX, y: e.clientY };
     refreshHit();
     hoverChip();
@@ -134,6 +142,21 @@ async function boot() {
     refreshHit();
     hoverChip();
   });
+  // Where the pointer really is, every couple of seconds: if it moved over her window and no
+  // mousemove came, the hook that brings it to her is gone (Windows drops it without a word, after
+  // sleep say), and main.js puts in a new one.
+  let seen = null;
+  let rearmedAt = -Infinity;
+  setInterval(async () => {
+    const at = await host.cursor().catch(() => null);
+    const before = seen;
+    seen = at;
+    if (!at?.inside || !before?.inside || (at.x === before.x && at.y === before.y)) return;
+    const now = performance.now();
+    if (now - lastMove < WATCH_MS * 1.5 || now - rearmedAt < 20000) return;
+    rearmedAt = now;
+    host.rearm();
+  }, WATCH_MS);
   window.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     if (chip.visible && chip.contains(e.clientX, e.clientY, 0)) host.openMenu();
@@ -198,6 +221,17 @@ async function boot() {
   chat.configure(config);
   chat.watchScreen(Boolean(config.peek)); // her menu: "Comment on my screen now and then"
   brain.onTalk = () => chat.start();
+  // Getting her chat going with buttons (setup.js): Ollama and a model, a key, or an address
+  const setup = new Setup({ guide, panel, host, brain, capri, voice });
+  guide.setup = setup;
+  guide.onTalk = () => chat.start();
+  chat.onSetup = (status) => setup.chat(status);
+  chat.onBetterModel = () => setup.better();
+  setup.onReady = () => chat.start();
+  // What she calls you, how she is, your lines, what she remembers (custom.js)
+  const custom = new Custom({ guide, host, brain, capri, voice });
+  guide.custom = custom;
+  brain.custom = mine(config);
   // the first Claude Code event that ever reaches her: so you know it worked
   brain.linked = config.linked;
   brain.watching = config.claude !== false;
@@ -312,17 +346,25 @@ async function boot() {
       powers.watch(capri.groove);
     }
     applyMotion(cfg.motion);
-    if (cfg.claude === false && brain.watching) {
+    if ((cfg.claude === false && brain.watching) || cfg.assistant !== brain.assistant) {
+      guide.answer(null);
+      panel.hide();
+      capri.stopPointing();
+      brain.replyFor = null;
+      brain.linked = cfg.linked;
       // no longer watching Claude Code: whatever it was in the middle of is no business of hers
       brain.sessions.clear();
       panel.setTicker(null);
       if (capri.mode === 'work' || capri.mode === 'alert') capri.setMode('idle');
     }
     brain.watching = cfg.claude !== false;
+    brain.custom = mine(cfg);
+    brain.assistant = cfg.assistant;
+    panel.labels = linesFor(cfg.lang, cfg.assistant);
     if (cfg.scale !== capri.scale) capri.setScale(cfg.scale);
     if (cfg.lang !== brain.lang) {
       brain.lang = cfg.lang;
-      panel.labels = LINES[cfg.lang] || LINES.fr;
+      panel.labels = linesFor(cfg.lang, cfg.assistant);
       document.documentElement.lang = cfg.lang;
     }
     if (Boolean(cfg.peek) !== Boolean(chat.cfg.peek)) chat.watchScreen(Boolean(cfg.peek));
@@ -339,8 +381,48 @@ async function boot() {
       case 'status':
         brain.status();
         break;
+      case 'customize': // "Make her yours" in her menu
+        custom.open();
+        break;
+      case 'setupChat': // "Set it up with her" in her menu's AI model
+        setup.chat();
+        break;
+      case 'setupKey': // "API key or address" in her menu's AI model, or a service picked there that needs one
+        setup.key();
+        break;
+      case 'setupFree': // --dev: Claude Code (or Codex) through Ollama
+        setup.free();
+        break;
+      case 'setupStep': // --dev: one step of her setup on its own (pickModel, pull, pickKeyed, address…)
+        guide.scene(() => setup[cmd.step]?.(...(cmd.args || [])));
+        break;
+      case 'rearmed': // a new mouse hook (main.js): click-through until the pointer comes over her again
+        mouse = null;
+        refreshHit();
+        break;
+      case 'rearm': // --dev: as if she'd noticed the pointer no longer reaches her
+        host.rearm();
+        break;
+      case 'loseGl': { // --dev: as if the GPU had been reset (waking from sleep): she goes, then comes back
+        const lose = capri.sprite.gl.getExtension('WEBGL_lose_context');
+        lose?.loseContext();
+        setTimeout(() => lose?.restoreContext(), cmd.ms ?? 1500);
+        break;
+      }
+      case 'answer': { // --dev: as if that button of her panel had been clicked (her chat's too)
+        const button = document.querySelector(`.panel__action[data-id="${CSS.escape(cmd.id)}"]`);
+        if (button) button.click();
+        else guide.answer(cmd.id);
+        break;
+      }
+      case 'assistantChanged': // Claude Code, Codex or Antigravity, picked in her menu
+        guide.welcome();
+        break;
       case 'welcome': // "How does it work?" in her menu
         guide.menu();
+        break;
+      case 'forget': // "Forget our conversations" in her menu, maybe with her chat open
+        chat.history = [];
         break;
       case 'chat': // "Talk to her" in her menu
         chat.start();
@@ -471,7 +553,7 @@ async function boot() {
   const hooks = await host.hooksStatus();
   // her welcome: the first time, or while she's meant to watch Claude Code and isn't plugged into it
   if (!config.welcomed || (config.claude && !hooks.installed)) guide.welcome();
-  else panel.say({ kind: 'info', line: pick(brain.t.online), hold: 4000 });
+  else panel.say({ kind: 'info', line: brain.onlineLine(), hold: 4000 });
 
   // In the evening, after a real day's work, she brings you her report card once, on her own,
   // at a quiet moment.

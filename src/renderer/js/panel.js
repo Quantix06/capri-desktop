@@ -28,8 +28,12 @@ export class Panel {
     this.tickerEl = ticker;
     this.labels = labels;
     this.line = panel.querySelector('.panel__line');
+    this.stopStream(); // her chat answer, decoding in (stream)
+    this.streamTo = [];
     this.portrait = panel.querySelector('.panel__face img');
     this.quote = panel.querySelector('.panel__quote');
+    this.progress = panel.querySelector('.panel__progress');
+    this.bar = panel.querySelector('.panel__bar');
     this.reply = panel.querySelector('.panel__reply');
     this.report = panel.querySelector('.panel__report');
     this.actions = panel.querySelector('.panel__actions');
@@ -102,20 +106,25 @@ export class Panel {
   // face: her expression (a key of FACES), instead of the one for its kind
   // report: her report card, { date, hero: { value, label }, stats: [{ value, label, hot }],
   //         longest: { label, project, time }, foot }
-  // chat: a line to type to her, { placeholder, send, close, mic, noteTag, note }; onSend(text)
-  //       gets what you typed, onMic() the mic button (a spoken conversation, on or off)
+  // chat: a line to type to her, { placeholder, send, close, mic, noteTag, note, secret }; onSend(text)
+  //       gets what you typed (secret: hidden as you type, a key), onMic() the mic button (a spoken
+  //       conversation, on or off)
+  // progress: a bar under the line, 0..1 (a download)
   // onLeave: () => void, when this message goes (closed, timed out or replaced)
   say(msg) {
     const cur = this.current;
-    if (cur && this.visible && cur.kind !== msg.kind && PRIORITY[cur.kind] > PRIORITY[msg.kind] && performance.now() - cur.at < 2600) {
-      return false; // don't step on something more important that just appeared
+    // don't step on something more important that just appeared (one step of her guide follows another)
+    const steps = cur?.guide && msg.guide;
+    if (cur && this.visible && !steps && cur.kind !== msg.kind && PRIORITY[cur.kind] > PRIORITY[msg.kind] && performance.now() - cur.at < 2600) {
+      return false;
     }
     // nor on something you may be reading: an answer, her report (progress lines don't knock it off)
     if (cur?.reply && this.visible && PRIORITY[msg.kind] < 2) return false;
     if (cur?.report && this.visible && PRIORITY[msg.kind] < 3) return false;
     // nor on a chat with her: only a permission prompt breaks in; Claude finishing waits until after
-    // (even while she teleports and the panel is put aside for a moment)
-    if (cur?.chat && !this.el.hidden && !this.leaving && PRIORITY[msg.kind] < 4) {
+    // (even while she teleports and the panel is put aside for a moment). Her setup's panels with a
+    // line to type in (a key) aren't a chat: its next step follows them.
+    if (cur?.chat && !cur.guide && !this.el.hidden && !this.leaving && PRIORITY[msg.kind] < 4) {
       if (PRIORITY[msg.kind] >= 3) this.missed = { ...msg, missedAt: performance.now() };
       return false;
     }
@@ -130,6 +139,7 @@ export class Panel {
     this.state.textContent = msg.badge || this.labels.state[msg.kind] || '';
     this.quote.textContent = msg.quote || '';
     this.quote.hidden = !msg.quote;
+    this.setProgress(msg.progress);
     this.reply.textContent = msg.reply || '';
     this.reply.hidden = !msg.reply;
     this.reply.scrollTop = 0;
@@ -153,6 +163,21 @@ export class Panel {
 
     if (msg.hold) this.hideTimer = setTimeout(() => this.hide(), msg.hold);
     return true;
+  }
+
+  // The bar under her line (a download), 0..1; nothing hides it.
+  setProgress(k) {
+    this.progress.hidden = typeof k !== 'number';
+    if (!this.progress.hidden) this.bar.style.transform = `scaleX(${clamp(k, 0, 1).toFixed(3)})`;
+  }
+
+  // The quote under her line, changed in place (how far a download is), without a new message.
+  setQuote(text) {
+    if (!this.current) return;
+    this.current.quote = text;
+    this.quote.textContent = text || '';
+    this.quote.hidden = !text;
+    this.place();
   }
 
   // Change her expression; the swap glitches across a couple of drawings.
@@ -260,8 +285,9 @@ export class Panel {
     this.el.classList.toggle('is-chat', Boolean(chat));
     this.line.classList.remove('is-streaming');
     this.chatForm.hidden = !chat;
-    this.note.hidden = !chat;
+    this.note.hidden = !chat?.note;
     if (!chat) return;
+    this.chatInput.type = chat.secret ? 'password' : 'text';
     this.chatInput.placeholder = chat.placeholder;
     this.chatInput.setAttribute('aria-label', chat.placeholder);
     this.chatInput.disabled = false;
@@ -273,9 +299,11 @@ export class Panel {
     this.chatMic.setAttribute('aria-label', chat.mic?.label || '');
     this.chatMic.hidden = !chat.mic;
     this.setVoice(null);
-    const tag = document.createElement('b');
-    tag.textContent = chat.noteTag;
-    this.note.replaceChildren(tag, ` ${chat.note}`);
+    if (chat.note) {
+      const tag = document.createElement('b');
+      tag.textContent = chat.noteTag || '';
+      this.note.replaceChildren(...(chat.noteTag ? [tag, ' '] : []), chat.note);
+    }
     requestAnimationFrame(() => this.chatInput.focus());
   }
 
@@ -284,6 +312,7 @@ export class Panel {
   chatTurn({ quote, face }) {
     if (!this.current?.chat) return;
     clearInterval(this.decodeTimer);
+    this.stopStream();
     this.setFace(face);
     this.quote.textContent = quote;
     this.quote.hidden = !quote;
@@ -292,13 +321,61 @@ export class Panel {
     this.place();
   }
 
-  // Her answer so far (done: all of it).
+  // Her answer so far (done: all of it). It decodes in through noise like her other lines, catching
+  // up faster the further behind it is (Claude Code's answer comes in one piece), and glitches once done.
   stream(text, { done = false } = {}) {
     if (!this.current?.chat) return;
-    this.line.textContent = text;
-    this.line.classList.toggle('is-streaming', !done);
+    this.streamTo = [...text];
+    this.streamDone = done;
+    // an answer rewritten rather than added to (a reasoning block cut out, an error): from where they part
+    let same = 0;
+    const max = Math.min(this.streamShown, this.streamTo.length);
+    while (same < max && this.streamTo[same] === this.streamAt[same]) same++;
+    this.streamShown = same;
+    if (reducedMotion.matches) {
+      this.streamShown = this.streamTo.length;
+      return this.streamStep();
+    }
+    this.streamTimer ??= setInterval(() => this.streamStep(), DECODE_STEP_MS);
+  }
+
+  streamStep() {
+    const chars = this.streamTo;
+    const behind = chars.length - this.streamShown;
+    this.streamShown += Math.min(behind, Math.max(2, Math.ceil(behind / 14)));
+    this.streamAt = chars.slice(0, this.streamShown);
+    const caughtUp = this.streamShown >= chars.length;
+    if (caughtUp && this.streamDone) {
+      this.stopStream();
+      this.line.textContent = chars.join('');
+      this.line.classList.remove('is-streaming');
+      this.glitchLine();
+    } else {
+      // noise where the next characters land; still waiting for more, a little static at the end
+      let tail = '';
+      for (let i = 0; i < (caughtUp ? 2 : Math.min(6, behind)); i++) {
+        tail += chars[this.streamShown + i] === ' ' ? ' ' : NOISE[Math.floor(Math.random() * NOISE.length)];
+      }
+      this.line.textContent = this.streamAt.join('') + tail;
+      this.line.classList.add('is-streaming');
+    }
     this.line.scrollTop = this.line.scrollHeight;
     this.place();
+  }
+
+  stopStream() {
+    clearInterval(this.streamTimer);
+    this.streamTimer = null;
+    this.streamShown = 0;
+    this.streamAt = [];
+  }
+
+  // a jolt through her finished answer: split colours, slices knocked sideways
+  glitchLine() {
+    if (reducedMotion.matches) return;
+    this.line.classList.remove('is-glitching');
+    void this.line.offsetWidth; // restart the CSS animation
+    this.line.classList.add('is-glitching');
   }
 
   // While she answers you can't send another.
@@ -379,6 +456,7 @@ export class Panel {
   hide() {
     clearTimeout(this.hideTimer);
     clearInterval(this.decodeTimer);
+    this.stopStream();
     this.onTalk?.(false);
     if (this.el.hidden || this.leaving) return;
     const gone = this.current;

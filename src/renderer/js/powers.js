@@ -166,7 +166,7 @@ export class Powers {
 
   async media(action) {
     const { t, capri } = this;
-    const res = await this.host.media(action);
+    const res = await this.host.mediaControl(action);
     if (res.error) return this.failed(res);
     const dir = action === 'previous' ? -capri.facing : capri.facing;
     if (action === 'next' || action === 'previous') capri.perform('swipe', dir || 1);

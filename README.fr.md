@@ -3,8 +3,8 @@
 # Capri
 
 Capri, le construct du *Project Capricorn* (Cyberpunk: Edgerunners, saison 2), vit sur ton bureau
-et te raconte ce que fait **Claude Code** : elle se téléporte, glitche, commente chaque action,
-vient te chercher quand Claude attend ta permission et part en vrille quand la tâche est finie.
+et te raconte ce que fait ton IA de code, **Claude Code**, **Codex** ou **Antigravity** : elle se téléporte,
+glitche, commente chaque action, vient te chercher quand elle attend ta permission et part en vrille quand la tâche est finie.
 
 ![Capri annonce que Claude a terminé](docs/done.png)
 
@@ -103,7 +103,10 @@ regard. Quand elle a fini, le fil se ravale dans son doigt et le bras revient d'
 - **Où est Claude ?** Elle pointe la fenêtre de Claude : celle où tu as tapé ton dernier prompt.
 - **Le dossier de Claude** : elle ouvre `~/.claude` dans l'Explorateur avec `settings.json` sélectionné, pointe la
   fenêtre, et t'explique ce qu'est son hook là-dedans et comment le retirer.
-- **Me brancher à Claude** : ses hooks en un clic. C'est aussi son accueil la première fois qu'elle démarre.
+- **Me brancher à Claude** : ses hooks en un clic. C'est aussi son accueil la première fois qu'elle démarre. À côté,
+  **Gratuit avec Ollama** lance Claude Code (ou Codex) via Ollama pour toi : ses hooks se mettent en place, Ollama
+  s'installe s'il n'est pas là, et une fenêtre s'ouvre sur `ollama launch claude`, où tu choisis un modèle.
+- **Me parler** : voir « Lui parler » plus bas.
 
 Elle fait des têtes en parlant : huit expressions, toutes des images d'elle tirées de la série (elle observe, elle
 détourne la tête, le sourire avec le croc, les yeux tout ronds, elle te regarde droit dans les yeux, le fou rire bouche
@@ -123,31 +126,54 @@ de la carte dans ton presse-papiers, sur son propre fond sombre, prête à colle
 après une vraie journée (3 tâches ou plus), elle te l'apporte d'elle-même, une fois. La démo ne compte pas, et tout
 reste sur ton PC, un jour à la fois.
 
-### Lui parler (Ollama)
+### Lui parler
 
 **Lui parler** dans son menu (ou le bouton **Parle-moi** quand tu cliques sur elle et qu'il ne se passe rien) : tu
-écris dans son panneau et elle te répond, dans son personnage, grâce à un modèle d'IA qui tourne sur ton PC avec
-[Ollama](https://ollama.com). Elle sait ce que fait Claude et ce qu'il a fait aujourd'hui. Elle répond par écrit (ou à
-voix haute : voir « Lui parler à voix haute »), dans sa langue.
+écris dans son panneau et elle te répond, dans son personnage. Elle sait ce que fait Claude et ce qu'il a fait
+aujourd'hui. Elle répond par écrit (ou à voix haute : voir « Lui parler à voix haute »), dans sa langue. Entrée envoie,
+Échap ferme.
 
-1. Installe Ollama et ouvre-le.
-2. Dans un terminal : `ollama pull llama3.2` (environ 2 Go). N'importe quel modèle de chat marche : choisis-le dans
-   son menu › **Modèle IA (Ollama)**.
-3. Son menu › **Lui parler**. Entrée envoie, Échap ferme.
+La première fois, elle règle tout avec toi, avec des boutons, sans terminal :
+
+- **Sur mon PC** (gratuit, rien ne sort de chez toi) : elle installe [Ollama](https://ollama.com) pour toi (avec
+  winget, l'installeur de Windows), le réveille, et télécharge un modèle pendant qu'une barre se remplit : gemma3
+  (3,3 Go, meilleur dans les autres langues que l'anglais) ou llama3.2 (2 Go, pour les petits PC). Sur un tout petit
+  modèle (1B et moins), elle te prévient qu'elle risque de dire n'importe quoi et t'en propose un meilleur.
+- **En ligne, sans compte** : Pollinations, rien à régler.
+- **J'ai une clé** : Groq ou Gemini (tous les deux ont une offre gratuite), OpenRouter, OpenAI, Mistral ou DeepSeek.
+  Tu colles ta clé dans son panneau et elle la vérifie. Elle reste sur ton PC, chiffrée avec ton compte Windows, et ne
+  part que vers ce service.
+
+Son menu › **Modèle IA** pour changer plus tard : **Choisir avec elle…**, ou directement un service et un modèle,
+LM Studio (`:1234`), llama.cpp ou vLLM (`:8080`), n'importe quel serveur compatible OpenAI (**Clé API ou
+adresse…**), ou **Claude Code** lui-même : tes messages partent à `claude -p` dans le dossier que tu choisis, en
+continuant la même conversation, et ses hooks montrent ce qu'il fait. Dans ce cas, le mode `default` ne le laisse que
+lire (personne n'est là pour dire oui) ; `acceptEdits` le laisse modifier des fichiers sans demander. **Oublier nos
+conversations** efface ce qu'elle a retenu de vos discussions.
 
 **C'est une IA.** Ses réponses sont écrites par le modèle, pas par les scénaristes de la série : c'est une version
 fan d'elle, et le panneau du chat le dit à chaque fois.
 
-**Fermer une appli** (Windows) : demande-lui (« ferme AM Music », « tu peux couper Discord ? ») et elle te propose un
-bouton au nom de l'appli. Rien ne se passe tant que tu ne cliques pas. Elle la ferme comme son propre bouton de
-fermeture, donc l'appli peut encore te demander d'enregistrer. Si elle s'est seulement cachée dans la zone de
-notification, elle te propose **Forcer la fermeture**, là encore seulement sur ton clic (le travail non enregistré est
-alors perdu). Elle ne ferme jamais les morceaux de Windows, Claude, Ollama ni elle-même. En vocal, tu confirmes en
-disant « oui ».
+**Ce qu'elle peut faire sur ton PC** (Windows), quand tu lui demandes dans le chat :
 
-### Elle fait des choses pour toi (Windows)
+- **Ouvrir une appli ou un jeu** : tout ce qui est dans ton menu Démarrer (les applis du Store comme Spotify
+  comprises), tes jeux Steam et Epic (« ouvre Spotify », « lance Brawlhalla »). Si tu l'as nommé toi-même, ça s'ouvre
+  tout de suite ; si c'est son IA qui l'a proposé, tu as d'abord un bouton.
+- **La musique** : « pause », « suivante », « plus fort », « coupe le son »… appuient sur les touches multimédia, donc
+  ça marche avec Spotify et la plupart des lecteurs, dès que tu envoies. « Mets Daft Punk sur Spotify » ouvre Spotify
+  sur une recherche (l'appli si tu l'as, sinon le site).
+- **Un site** : toujours derrière un bouton qui montre où il mène.
+- **Fermer une appli** (« ferme AM Music », « tu peux couper Discord ? ») : un bouton au nom de l'appli, et rien ne se
+  passe tant que tu ne cliques pas. Elle la ferme comme son propre bouton de fermeture, donc l'appli peut encore te
+  demander d'enregistrer. Si elle s'est seulement cachée dans la zone de notification, elle te propose **Forcer la
+  fermeture**, là encore seulement sur ton clic (le travail non enregistré est alors perdu). Elle ne ferme jamais les
+  morceaux de Windows, Claude, Ollama ni elle-même. À l'oral, tu confirmes en disant « oui ».
 
-Demande-lui dans son chat, ou à voix haute : elle comprend tout de suite les demandes simples, dans ses cinq langues,
+Elle peut aussi regarder ton écran quand tu le demandes, et parler avec toi à voix haute : voir plus bas. Rien d'autre : jamais tes fichiers.
+
+### Directement depuis tes mots (Windows)
+
+Demande-lui dans son chat, ou à voix haute : elle comprend tout de suite les demandes simples et les fait elle-même, dans ses cinq langues,
 sans passer par l'IA (c'est instantané et ça marche même avec un tout petit modèle). Pour le reste, le modèle peut
 lui-même demander une de ces actions, mais seulement si ton message demandait quelque chose. Plusieurs à la fois,
 ça marche aussi : « mets le volume à 30 et ouvre YouTube ».
@@ -157,7 +183,7 @@ lui-même demander une de ces actions, mais seulement si ton message demandait q
 | « ouvre YouTube », « va sur reddit.com » | ouvre la page dans ton navigateur (ou l'appli du même nom si tu l'as) | elle lance son bras vers l'écran, un éclair rouge au bout des doigts |
 | « ouvre une page web », « ouvre le navigateur » | ouvre ton navigateur | pareil |
 | « ouvre mes mails », « ouvre ma boîte mail » | tes mails : Gmail, Outlook (web) ou l'appli Outlook / Courrier, au choix dans son menu › **Mes mails** | pareil |
-| « lance Spotify », « démarre le bloc-notes » | lance l'appli depuis le menu Démarrer | pareil, vers la barre des tâches |
+| « lance Spotify », « démarre le bloc-notes », « lance Brawlhalla » | lance l'appli ou le jeu (menu Démarrer, Steam, Epic) | pareil, vers la barre des tâches |
 | « cherche des recettes de crêpes », « cherche lofi girl sur YouTube » | une recherche Google (ou YouTube, Wikipédia, Maps, Images) | pareil |
 | « pause », « reprends la musique », « chanson suivante », « précédente » | pilote ce qui joue (Spotify, navigateur, AM Music… tout ce que le panneau média de Windows voit) | elle se tait la tête basse, danse, ou balaie l'air du bras |
 | « c'est quoi cette musique ? » | te dit le titre et l'artiste | elle tend l'oreille |
@@ -169,7 +195,7 @@ Si elle ne trouve ni appli ni site au nom que tu dis, elle te le dit et propose 
 ou « oui » à voix haute).
 
 Ce qu'elle ne fait jamais : toucher à tes fichiers, à tes réglages ou à tes messages. Une appli n'est lancée que si
-elle est dans ton menu Démarrer, et une page ne s'ouvre qu'en `http(s)`.
+elle est dans ton menu Démarrer (ou un jeu Steam / Epic), et une page ne s'ouvre qu'en `http(s)`.
 
 Et sans rien lui demander :
 - **La molette** sur elle règle le volume (une barre s'affiche à côté de sa tête), **le clic du milieu** met la musique
@@ -192,7 +218,7 @@ et le commente, dans son personnage.
   privé et évite de se répéter. Même image unique, même modèle local, rien d'enregistré.
 - **Une seule image**, de l'écran où elle est, prise au moment où tu le demandes, sans elle dessus, envoyée au modèle
   local puis jetée. Rien n'est enregistré.
-- **Il faut un modèle qui voit** les images : `ollama pull gemma3` (environ 3 Go ; `llava`, `qwen2.5vl`, `minicpm-v`…
+- **Il faut un modèle qui voit** les images, dans Ollama (quel que soit le modèle de son chat, Gemini ou Claude Code compris) : `ollama pull gemma3` (environ 3 Go ; `llava`, `qwen2.5vl`, `minicpm-v`…
   marchent aussi). Elle le trouve toute seule ; son menu › **Modèle qui voit (Ollama)** pour en choisir un autre. Si ton
   modèle de chat voit déjà les images, elle s'en sert.
 
@@ -214,6 +240,21 @@ elle demande si tu es toujours là, puis coupe le micro. Tu peux toujours écrir
 - **Le micro** n'est allumé que pendant une conversation vocale, et coupé quand elle parle (pour qu'elle ne s'entende
   pas elle-même). Ta voix ne quitte jamais ton PC. S'il ne marche pas : Paramètres Windows › Confidentialité ›
   Microphone › autoriser les applis de bureau.
+
+### La personnaliser
+
+Clic droit sur elle › **La personnaliser…** (ou « Me personnaliser » dans son guide), un panneau à la fois, et chacun
+peut être passé :
+
+- **Comment elle t'appelle.** Elle s'en sert de temps en temps, et en revenant (« Capri en ligne. Salut, Max. »).
+- **Comment elle est**, avec tes mots (« plus taquine, et parle-moi de Night City ») : son chat suit ça. Elle reste
+  Capri.
+- **Des phrases à toi**, qu'elle dit de temps en temps avec les siennes quand tu cliques sur elle. Écris `{name}` dans
+  l'une d'elles et elle y met ton prénom.
+- **Des choses à retenir** (ton jeu préféré, ton chat, D…) : son chat les garde en tête.
+
+Dans son chat, « appelle-moi Léa » et « souviens-toi que mon chat s'appelle Neko » marchent aussi. Tout ça reste dans
+ses réglages, sur ton PC.
 
 Elle n'attrape la souris que sur son corps (au pixel près) : tout le reste de l'écran reste utilisable normalement.
 
@@ -288,6 +329,21 @@ Relance tes sessions Claude Code ensuite. Pour retirer : `npm run hooks:uninstal
 
 Les hooks sont lancés en `async` : ils ne ralentissent jamais Claude, et si Capri n'est pas lancée ils ne font rien.
 
+### Codex ou Antigravity à la place de Claude Code
+
+Clic droit sur elle › **Surveiller** › **Codex** ou **Antigravity**. Elle te salue et propose de se brancher, comme
+pour Claude Code. Ensuite :
+
+- **Codex** : relance-le et autorise ses hooks quand il te le demande. Ils vont dans `~/.codex/hooks.json`. Son hook
+  pour Codex a besoin de [Node.js](https://nodejs.org) 20 ou plus dans ton PATH.
+- **Antigravity** : lance une nouvelle conversation. Ses hooks vont dans `~/.gemini/config/hooks.json`.
+
+Elle en suit un seul à la fois, celui choisi dans son menu, et ses répliques, son guide et son chat prennent son nom.
+Elle ne fait que regarder : quand Codex ou Antigravity demande une autorisation, c'est toujours là-bas que tu réponds.
+En ligne de commande : `npm run hooks:codex:install` ou `npm run hooks:agy:install` (`:uninstall` pour les retirer),
+et `npm run test:hooks` lance les tests des deux adaptateurs. **Surveiller** › **Rien, juste me tenir compagnie** :
+elle ne parle plus d'aucun.
+
 ### Tester sans Claude
 
 ```bash
@@ -341,13 +397,18 @@ avec ces noms (`.mp3`, `.wav`, `.ogg` ou `.m4a`) :
 
 - **Mac, Linux ?** Pas encore d'installeur, mais tu peux la lancer depuis le code (voir plus haut).
 - **Téléphone, Android ?** Non, il lui faut un ordinateur.
-- **D'autres assistants (Codex, Cursor, Windsurf, Gemini…) ?** Seulement Claude Code pour l'instant.
+- **D'autres assistants ?** Claude Code, Codex et Antigravity : son menu › **Surveiller**. Cursor, Windsurf et Gemini CLI : pas encore.
 - **Ollama ?** De deux façons. Claude Code qui tourne sur un modèle local via Ollama (`ollama launch claude`) : elle le
   voit comme n'importe quel Claude Code, c'est juste plus lent, et son ticker compte les secondes pendant qu'il
   réfléchit. Et elle peut discuter avec toi via Ollama : voir « Lui parler ».
 - **Elle bouge à peine, son intro apparaît et disparaît juste en fondu.** Windows a ses animations coupées
   (Paramètres › Accessibilité › Effets visuels › Effets d'animation), et elle suit ce réglage. Son menu ›
   **Animations** › **Toutes** la fait bouger quand même ; la première fois, elle te pose la question.
+- **Un écran noir derrière elle.** Sur certains PC, sa fenêtre transparente s'affiche en noir (souvent les cartes
+  NVIDIA avec FXAA, MFAA ou le HDR activés ; d'autres applis du même genre comme Desktop Mate le font aussi). Clic droit
+  sur elle, ou sur son icône près de l'horloge › **Affichage** › **OpenGL** : elle redémarre en se dessinant autrement.
+  Toujours noir ? **Sans la carte graphique**, qui demande un peu plus au processeur. Couper FXAA et MFAA dans le
+  panneau de configuration NVIDIA peut aussi régler le problème.
 - **Je peux l'éteindre ?** Ctrl+Alt+C la range, **Quitter** dans son menu la ferme. Claude Code marche exactement pareil
   sans elle.
 - **Elle flotte et dit des petites phrases, mais rien d'autre.** C'est normal tant que Claude Code ne fait rien. S'il ne

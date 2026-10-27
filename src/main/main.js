@@ -1,29 +1,35 @@
 'use strict';
 
 const path = require('node:path');
+const os = require('node:os');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
 const {
   app, BrowserWindow, Tray, Menu, ipcMain, screen, protocol, net, shell, globalShortcut, nativeImage,
-  clipboard, ClipboardItem,
+  clipboard, ClipboardItem, dialog, powerMonitor,
 } = require('electron');
 
 const config = require('./config');
 const { TRAY, LANGS } = require('./labels');
 const { createBridge } = require('./bridge');
 const { startWindowWatch } = require('./windows');
-const ollama = require('./ollama');
+const llm = require('./llm');
+const setup = require('./setup');
 const apps = require('./apps');
+const ollama = require('./ollama'); // her look at your screen: always a local model that sees
+const launch = require('./launch');
 const system = require('./system');
 const sight = require('./sight');
-const hooks = require('../../scripts/install-hooks');
+const { ASSISTANTS, assistant } = require('./assistants');
+const activeAssistant = () => assistant(config.load().assistant); // Claude Code or Codex
+const activeHooks = () => activeAssistant().hooks;
 const demoSteps = require('../../scripts/demo-sequence');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const DEV = process.argv.includes('--dev');
 const PORT = Number(process.env.CAPRI_PORT) || 47823;
 const SOUND_EXT = /\.(mp3|wav|ogg|m4a)$/i;
-const CLAUDE_CODE_HELP = 'https://code.claude.com/docs/en/quickstart';
+
 const OLLAMA_SITE = 'https://ollama.com';
 
 protocol.registerSchemesAsPrivileged([
@@ -37,12 +43,36 @@ let demoTimer = null;
 let windowWatch = null;
 // the watcher only speaks when something changes: the overlay asks for this when it (re)loads
 let lastWindows = null;
-let chatModels = null; // the Ollama models, as last seen (null: Ollama not reached)
-let visionModels = []; // those of them that can look at a picture (her look at your screen)
+let chatModels = null; // the provider's models, as last seen (null: not reached)
+let chatError = null;  // why not, when the provider said
+let chatErrorCode = null; // 'nokey' or 'nourl': what her setup should ask for
+let visionModels = []; // Ollama's models that can look at a picture (her look at your screen)
 let voices = []; // the system's voices in her language, as the overlay found them (her voice out loud)
 const chats = new Map(); // id -> AbortController of an answer being streamed
 
 const userSoundsDir = () => path.join(app.getPath('userData'), 'sounds');
+
+// Her memory of your chats, across restarts: { history: [{ role, content }], claude: Claude Code's session }
+const memoryFile = () => path.join(app.getPath('userData'), 'memory.json');
+function readMemory() {
+  try {
+    return JSON.parse(fs.readFileSync(memoryFile(), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+function saveMemory(patch) {
+  try {
+    fs.writeFileSync(memoryFile(), JSON.stringify({ ...readMemory(), ...patch }));
+  } catch (err) {
+    console.error('[capri] could not save her memory:', err.message);
+  }
+}
+function forgetChats() {
+  llm.resetClaude();
+  saveMemory({ history: [], claude: null });
+  sendCommand('forget');
+}
 
 // capri://app/...        -> files of this repo
 // capri://usersounds/... -> the user's own sound overrides
@@ -64,10 +94,12 @@ function targetDisplay() {
 }
 
 // Her window: the work area, or the whole screen while she rests on the taskbar (her legs hang
-// over it). `gap`: how much of her window is below the top of the taskbar (0, or its height).
+// over it), less its top row of pixels: a window on top covering the whole screen is a fullscreen
+// app to Windows (animated wallpapers pause, notifications wait). `gap`: how much of her window is
+// below the top of the taskbar (0, or its height).
 function overlayArea() {
   const { workArea, bounds } = targetDisplay();
-  const area = config.load().rest === 'taskbar' ? bounds : workArea;
+  const area = config.load().rest === 'taskbar' ? { ...bounds, y: bounds.y + 1, height: bounds.height - 1 } : workArea;
   return { area, gap: area.y + area.height - (workArea.y + workArea.height) };
 }
 
@@ -76,6 +108,31 @@ function fitOverlay() {
   const { area, gap } = overlayArea();
   overlay.setBounds(area);
   overlay.webContents.send('overlay:resize', { width: area.width, height: area.height, gap });
+}
+
+// The pointer reaches her click-through window through a mouse hook, and Windows drops a hook that
+// doesn't answer in time without a word (waking from sleep, a locked screen, a stall): she can't be
+// clicked anymore. Off then on puts in a new one; her place on top and her size are set again too.
+function rearmOverlay() {
+  if (!overlay || overlay.isDestroyed()) return;
+  overlay.setIgnoreMouseEvents(false);
+  overlay.setIgnoreMouseEvents(true, { forward: true });
+  overlay.setAlwaysOnTop(true, 'screen-saver');
+  fitOverlay();
+  sendCommand('rearmed'); // click-through again: she waits for the pointer to be on her
+  console.log('[capri] mouse hook set up again');
+}
+
+// Back on top of everything, the taskbar included (it comes up over her when it's clicked). Twice:
+// the taskbar can come up again a moment later, as its menus and previews open.
+function raiseOverlay() {
+  for (const wait of [0, 400]) {
+    setTimeout(() => {
+      if (!overlay || overlay.isDestroyed()) return;
+      overlay.setAlwaysOnTop(true, 'screen-saver');
+      overlay.moveTop();
+    }, wait);
+  }
 }
 
 function createOverlay() {
@@ -190,8 +247,8 @@ function resolveLang(setting) {
 
 // What the overlay gets: `lang` is the resolved one, `langSetting` what the user picked.
 function rendererConfig() {
-  const cfg = config.load();
-  return { ...cfg, lang: resolveLang(cfg.lang), langSetting: cfg.lang, floorGap: overlayArea().gap };
+  const { apiKeys, ...cfg } = config.load(); // the keys stay here: the overlay only learns which ones are set
+  return { ...cfg, keys: Object.keys(apiKeys || {}), assistant: activeAssistant().id, lang: resolveLang(cfg.lang), langSetting: cfg.lang, floorGap: overlayArea().gap };
 }
 
 function updateConfig(patch) {
@@ -206,8 +263,10 @@ function updateConfig(patch) {
 function rebuildTray() {
   if (!tray) return;
   const cfg = config.load();
-  const hookState = hooks.status();
-  const t = TRAY[resolveLang(cfg.lang)];
+  const hookState = activeHooks().status();
+  const watched = activeAssistant();
+  const t = Object.fromEntries(Object.entries(TRAY[resolveLang(cfg.lang)]).map(([key, value]) =>
+    [key, typeof value === 'string' && watched.id !== 'claude' ? value.replaceAll('Claude Code', watched.name) : value]));
 
   const displays = screen.getAllDisplays();
   const current = targetDisplay().id;
@@ -223,6 +282,7 @@ function rebuildTray() {
     { label: t.talk, click: () => sendCommand('chat') },
     { label: t.voice, accelerator: 'Ctrl+Alt+V', click: () => sendCommand('voice') },
     { label: t.look, click: () => sendCommand('look') },
+    { label: t.custom, click: () => sendCommand('customize') },
     { label: cfg.visible ? t.hide : t.show, accelerator: 'Ctrl+Alt+C', click: () => toggleVisible() },
     { type: 'separator' },
     {
@@ -257,11 +317,32 @@ function rebuildTray() {
     },
     {
       label: t.chatModel,
-      submenu: chatModels?.length
-        ? chatModels.map((name) => ({
-          label: name, type: 'radio', checked: name === pickModel(cfg), click: () => updateConfig({ chatModel: name }),
-        }))
-        : [{ label: t.noOllama, enabled: false }],
+      submenu: [
+        { label: t.aiSetup, click: () => sendCommand('setupChat') },
+        { type: 'separator' },
+        ...Object.entries(llm.PROVIDERS).map(([provider, p]) => ({
+          label: p.label, type: 'radio', checked: cfg.provider === provider, click: () => pickProvider(provider),
+        })),
+        { type: 'separator' },
+        ...(chatModels?.length
+          ? chatModels.map((name) => ({
+            label: name, type: 'radio', checked: name === pickModel(cfg), click: () => updateConfig({ chatModel: name }),
+          }))
+          : [{ label: (chatError || t.noOllama).slice(0, 80), enabled: false }]),
+        { type: 'separator' },
+        ...(cfg.provider === 'claude' ? [
+          { label: `Claude Code: ${cfg.claudeCwd || app.getPath('home')}`, click: pickClaudeFolder },
+          {
+            label: 'Claude Code permissions',
+            submenu: llm.CLAUDE_MODES.map((mode) => ({
+              label: mode, type: 'radio', checked: cfg.claudeMode === mode, click: () => updateConfig({ claudeMode: mode }),
+            })),
+          },
+        ] : []),
+        { label: t.forget, click: forgetChats },
+        // the key (or the address) of the one picked, pasted in her panel
+        { label: t.apiKey, click: () => sendCommand('setupKey') },
+      ],
     },
     // her look at your screen: whether she may, and the model she looks with
     { label: t.sight, type: 'checkbox', checked: cfg.sight, click: (item) => updateConfig({ sight: item.checked }) },
@@ -308,11 +389,40 @@ function rebuildTray() {
         label, type: 'radio', checked: cfg.rest === rest, click: () => updateConfig({ rest }),
       })),
     },
-    { label: t.claude, type: 'checkbox', checked: cfg.claude, click: (item) => updateConfig({ claude: item.checked }) },
+    // the coding assistant she watches (a new one: she says hello and offers to plug herself in), or none
+    {
+      label: t.watch,
+      submenu: [
+        ...Object.entries(ASSISTANTS).map(([id, { name }]) => ({
+          label: name,
+          type: 'radio',
+          checked: cfg.claude && watched.id === id,
+          click: () => {
+            const other = watched.id !== id;
+            updateConfig({ claude: true, assistant: id, ...(other && { linked: false, welcomed: false }) });
+            if (other) sendCommand('assistantChanged');
+          },
+        })),
+        { label: t.watchNone, type: 'radio', checked: !cfg.claude, click: () => updateConfig({ claude: false }) },
+      ],
+    },
     {
       label: t.motion,
       submenu: [['auto', t.motionAuto], ['full', t.motionFull], ['reduced', t.motionReduced]].map(([motion, label]) => ({
         label, type: 'radio', checked: cfg.motion === motion, click: () => updateConfig({ motion, motionAsked: true }),
+      })),
+    },
+    {
+      label: t.display,
+      // only read when she starts: she restarts in the mode picked
+      submenu: [['auto', t.displayAuto], ['gl', t.displayGl], ['software', t.displaySoftware]].map(([render, label]) => ({
+        label, type: 'radio', checked: cfg.render === render,
+        click: () => {
+          if (cfg.render === render) return;
+          config.save({ render });
+          app.relaunch();
+          app.exit(0);
+        },
       })),
     },
     {
@@ -352,7 +462,7 @@ function loginItemOptions() {
 function runHooks(action, { quiet = false } = {}) {
   let outcome;
   try {
-    const result = action === 'install' ? hooks.install() : hooks.uninstall();
+    const result = action === 'install' ? activeHooks().install() : activeHooks().uninstall();
     outcome = { action, ok: true, file: result.file };
   } catch (err) {
     outcome = { action, ok: false, error: err.message };
@@ -378,9 +488,15 @@ function pickVision(cfg = config.load()) {
 }
 
 async function refreshModels() {
-  const found = await ollama.catalog().catch(() => null);
-  chatModels = found && found.map((m) => m.name);
-  visionModels = found ? found.filter((m) => m.vision).map((m) => m.name) : [];
+  const cfg = config.load();
+  chatError = null;
+  chatErrorCode = null;
+  chatModels = await llm.models(cfg.provider, llmConfig(cfg)).catch((err) => {
+    chatError = err.message;
+    chatErrorCode = err.code || null;
+    return null;
+  });
+  await refreshVision();
   rebuildTray();
   return chatModels;
 }
@@ -388,6 +504,58 @@ async function refreshModels() {
 // What she sees of your screen, for one answer: a picture of the screen she's on.
 function lookAtScreen() {
   return sight.capture({ display: targetDisplay(), overlay });
+}
+
+// Ollama's models that see, whatever answers her chat (Ollama may run beside Gemini, Claude Code…)
+async function refreshVision() {
+  const found = await ollama.catalog().catch(() => null);
+  visionModels = found ? found.filter((m) => m.vision).map((m) => m.name) : [];
+}
+
+// Her answer from the model picked, or from the next one when that one can't: too busy twice in a row
+// (Gemini's "high demand"), or not served anymore (an older model closed to new keys). The model
+// that answered is kept for next time.
+async function chatWithFallback(cfg, messages, send, signal, streamed) {
+  let model = pickModel(cfg);
+  const tried = new Set();
+  let busy = 0;
+  for (;;) {
+    try {
+      const text = await llm.chat(cfg.provider, llmConfig(cfg), { model, messages }, send, signal);
+      if (model !== pickModel(cfg)) updateConfig({ chatModel: model });
+      return text;
+    } catch (err) {
+      if (signal.aborted || streamed() || !['busy', 'gone'].includes(err.code)) throw err;
+      if (err.code === 'busy' && busy++ === 0) {
+        await new Promise((r) => setTimeout(r, 1500)); // usually gone a moment later
+        continue;
+      }
+      tried.add(model);
+      const next = chatModels?.find((m) => !tried.has(m));
+      if (!next || tried.size >= 3) throw err;
+      model = next;
+      busy = 0;
+    }
+  }
+}
+
+async function pickProvider(provider) {
+  updateConfig({ provider });
+  await refreshModels();
+  if (chatErrorCode) sendCommand('setupKey'); // it needs a key or an address: she asks for it
+}
+
+// What llm.js gets: the config with its keys opened (they're kept encrypted, setup.js)
+function llmConfig(cfg = config.load()) {
+  return { ...cfg, apiKeys: setup.openKeys(cfg.apiKeys) };
+}
+
+async function pickClaudeFolder() {
+  const { canceled, filePaths } = await dialog.showOpenDialog({ properties: ['openDirectory'], defaultPath: config.load().claudeCwd || app.getPath('home') });
+  if (canceled || !filePaths[0]) return;
+  llm.resetClaude(); // a new folder, a new Claude Code conversation (hers goes on)
+  saveMemory({ claude: null });
+  updateConfig({ claudeCwd: filePaths[0] });
 }
 
 function createTray() {
@@ -402,29 +570,32 @@ function registerIpc() {
   ipcMain.on('overlay:interactive', (_e, on) => {
     overlay?.setIgnoreMouseEvents(!on, { forward: true });
   });
+  ipcMain.on('overlay:rearm', () => rearmOverlay()); // the pointer moved over her and she never heard of it
   ipcMain.handle('overlay:cursor', () => {
     const p = screen.getCursorScreenPoint();
     const b = overlay.getBounds();
     return { x: p.x - b.x, y: p.y - b.y, inside: p.x >= b.x && p.y >= b.y && p.x < b.x + b.width && p.y < b.y + b.height };
   });
   ipcMain.handle('config:get', () => rendererConfig());
-  ipcMain.handle('hooks:status', () => hooks.status());
+  ipcMain.handle('hooks:status', () => activeHooks().status());
   ipcMain.handle('config:set', (_e, patch) => updateConfig(patch));
   ipcMain.handle('demo:window', (_e, open) => demoWindow(open));
   // right-clicking her: the same menu as the tray icon (which Windows often hides behind the ^ by the clock)
   ipcMain.on('menu:open', () => trayMenu?.popup({ window: overlay }));
   // her welcome panel's buttons
   ipcMain.handle('hooks:install', () => runHooks('install', { quiet: true }));
-  ipcMain.handle('claude:found', () => fs.existsSync(path.dirname(hooks.status().file))); // Claude Code keeps its settings there
-  ipcMain.on('claude:help', () => shell.openExternal(CLAUDE_CODE_HELP));
+  ipcMain.handle('claude:found', () => fs.existsSync(path.dirname(activeHooks().status().file))); // Claude Code keeps its settings there
+  ipcMain.on('claude:help', () => shell.openExternal(activeAssistant().help));
   ipcMain.handle('windows:get', () => lastWindows);
   // talking to her (chat.js): is Ollama there, with a model to talk with
   ipcMain.handle('chat:status', async () => {
+    const cfg = config.load(true); // keys may have been edited by hand
+    const { provider } = cfg;
     const models = await refreshModels();
-    if (!models) return { ok: false, error: 'offline' };
-    if (!models.length) return { ok: false, error: 'nomodel' };
-    ollama.warm(pickModel()); // loading while you type your first message
-    return { ok: true, model: pickModel() };
+    if (!models) return { ok: false, error: chatError || 'offline', code: chatErrorCode, provider };
+    if (!models.length) return { ok: false, error: 'nomodel', provider };
+    llm.warm(provider, pickModel()); // loading while you type your first message
+    return { ok: true, provider, model: pickModel(), agent: provider === 'claude', local: llm.isLocal(provider, cfg), warmup: provider === 'ollama' };
   });
   // her answer, streamed to the overlay piece by piece as `chat:delta`. look: she looks at your
   // screen for this one (her menu lets her, or `once`: you just said yes, or `peek`: a glance of
@@ -434,34 +605,98 @@ function registerIpc() {
     const abort = new AbortController();
     chats.set(id, abort);
     try {
-      const send = (text) => overlay?.webContents.send('chat:delta', { id, text });
-      let model = pickModel();
+      let streamed = false;
+      const send = (text) => {
+        streamed = true;
+        overlay?.webContents.send('chat:delta', { id, text });
+      };
       if (look) {
+        // her look at your screen: always Ollama, with a model that sees, whoever answers her chat
         if (!config.load().sight && look !== 'once' && look !== 'peek') return { ok: false, error: 'nosight' };
-        await refreshModels();
-        model = pickVision();
+        await refreshVision();
+        const model = pickVision();
         if (!model) return { ok: false, error: 'novision' };
         const image = await lookAtScreen();
         const last = messages.at(-1);
         messages = [...messages.slice(0, -1), { ...last, images: [image] }]; // that picture, only in this request
+        const text = await ollama.chat({ model, messages, long: true }, send, abort.signal);
+        return { ok: true, text, model };
       }
-      const text = await ollama.chat({ model, messages, long: Boolean(look) }, send, abort.signal);
-      return { ok: true, text, model };
+      const cfg = config.load();
+      const text = await chatWithFallback(cfg, messages, send, abort.signal, () => streamed);
+      if (cfg.provider === 'claude') saveMemory({ claude: llm.claudeMemory() });
+      return { ok: true, text };
     } catch (err) {
-      return { ok: false, error: abort.signal.aborted ? 'stopped' : err.message };
+      return { ok: false, error: abort.signal.aborted ? 'stopped' : err.message, code: err.code || null };
     } finally {
       chats.delete(id);
     }
   });
   ipcMain.on('chat:stop', (_e, id) => chats.get(id)?.abort());
+  ipcMain.handle('chat:memory', () => readMemory().history || []);
+  ipcMain.on('chat:remember', (_e, history) => Array.isArray(history) && saveMemory({ history }));
   ipcMain.on('chat:ollama', () => shell.openExternal(OLLAMA_SITE));
+  // setting her up with buttons (setup.js): Ollama and a model, or a key, or an address
+  const progress = (payload) => overlay?.webContents.send('setup:progress', payload);
+  let pulling = null; // AbortController of the model being fetched
+  ipcMain.handle('setup:info', () => ({ models: setup.MODELS, ram: os.totalmem(), keyed: Object.keys(setup.KEY_PAGES) }));
+  ipcMain.handle('setup:ollama', () => setup.ollamaState());
+  ipcMain.handle('setup:install', () => setup.installOllama((line) => progress({ kind: 'install', line })));
+  ipcMain.handle('setup:start', async () => {
+    const res = await setup.startOllama();
+    await refreshModels();
+    return res;
+  });
+  ipcMain.handle('setup:pull', async (_e, name) => {
+    if (!setup.MODELS.some((m) => m.name === name)) return { ok: false, error: 'unknown model' };
+    pulling?.abort();
+    const abort = new AbortController();
+    pulling = abort;
+    try {
+      await setup.pullModel(name, (p) => progress({ kind: 'pull', ...p }), abort.signal);
+      updateConfig({ provider: 'ollama' });
+      await refreshModels();
+      const model = chatModels?.find((m) => m === name || m.startsWith(`${name}:`));
+      if (model) updateConfig({ chatModel: model });
+      return { ok: true, model };
+    } catch (err) {
+      return { ok: false, error: abort.signal.aborted ? 'stopped' : err.message };
+    } finally {
+      if (pulling === abort) pulling = null;
+    }
+  });
+  ipcMain.on('setup:cancel', () => pulling?.abort());
+  // who answers her chat, with its key or address if it needs one: saved, tried, and undone if it fails
+  ipcMain.handle('setup:use', async (_e, { provider, key, url }) => {
+    if (!llm.PROVIDERS[provider]) return { ok: false, error: 'unknown provider' };
+    const before = config.load();
+    const patch = { provider };
+    if (key) patch.apiKeys = { ...before.apiKeys, [provider]: setup.sealKey(String(key).trim()) };
+    if (url) patch.customUrl = String(url).trim();
+    updateConfig(patch);
+    const models = await refreshModels();
+    if (models?.length) return { ok: true, model: pickModel() };
+    const error = models ? 'no model' : chatError || 'offline';
+    updateConfig({ provider: before.provider, apiKeys: before.apiKeys, customUrl: before.customUrl });
+    await refreshModels();
+    return { ok: false, error };
+  });
+  ipcMain.on('setup:keyPage', (_e, provider) => setup.KEY_PAGES[provider] && shell.openExternal(setup.KEY_PAGES[provider]));
+  ipcMain.handle('setup:launch', (_e, integration) => setup.launchThroughOllama(integration));
   // closing an app you asked her to close, once you've clicked to confirm (apps.js)
   const appInfo = (app) => app && { name: app.process, label: app.label };
   ipcMain.handle('apps:list', async () => (await apps.list().catch(() => [])).map(appInfo));
   ipcMain.handle('apps:find', async (_e, wanted) => appInfo(await apps.find(wanted).catch(() => null)));
   ipcMain.handle('apps:close', (_e, { name, force }) => apps.close(name, { force }).catch((err) => ({ error: err.message })));
-  // what she does when you ask her (system.js): the music, the volume, launching an app, the web.
-  // Every one answers { error } instead of throwing, so she can say it didn't work.
+  // opening things you ask her to (launch.js): an app or a game, your music, a website
+  ipcMain.handle('apps:findLaunch', (_e, text) => launch.find(String(text || '')).catch(() => null));
+  ipcMain.handle('apps:launch', (_e, item) => launch.launch(item).then(() => ({ ok: true }), (err) => ({ ok: false, error: err.message })));
+  ipcMain.handle('apps:media', (_e, action) => launch.media(action));
+  ipcMain.handle('apps:music', (_e, query) => launch.music(query).catch(() => false));
+  ipcMain.handle('apps:site', (_e, address) => launch.site(address).catch(() => false));
+  // what she does when you ask her plainly (powers.js, through system.js): the music, the volume,
+  // an app or a game (launch.js), the web. Every one answers { error } instead of throwing, so she
+  // can say it didn't work.
   const safely = (fn) => async (_e, arg) => {
     try {
       return await fn(arg);
@@ -473,9 +708,11 @@ function registerIpc() {
   ipcMain.handle('system:media', safely((action) => system.media(action)));
   ipcMain.handle('system:volume', safely((change) => system.volume(change)));
   ipcMain.handle('system:launch', safely(async (wanted) => {
-    const app = await system.findLaunchable(wanted);
-    if (!app) return { missing: true };
-    return system.launch(app.id);
+    if (process.platform !== 'win32') throw new Error('windows only');
+    const item = await launch.find(String(wanted || ''));
+    if (!item) return { missing: true };
+    await launch.launch(item);
+    return { name: item.name };
   }));
   ipcMain.handle('system:open', safely(async (address) => {
     const url = system.webAddress(address);
@@ -488,7 +725,7 @@ function registerIpc() {
     return { ok: true };
   }));
   ipcMain.handle('system:music', safely(async (query) => {
-    const found = await system.musicSearch(query);
+    const found = await system.musicSearch(query, launch);
     await shell.openExternal(found.url);
     return { where: found.where };
   }));
@@ -524,12 +761,12 @@ function registerIpc() {
   });
   // her guide: Claude Code's folder (~/.claude) in Explorer, its settings file selected
   ipcMain.handle('guide:claudeFolder', () => {
-    const file = hooks.status().file;
+    const file = activeHooks().status().file;
     const dir = path.dirname(file);
     if (!fs.existsSync(dir)) return { found: false, dir };
     if (fs.existsSync(file)) shell.showItemInFolder(file);
     else shell.openPath(dir);
-    return { found: true, dir, file: fs.existsSync(file) };
+    return { found: true, dir, file: fs.existsSync(file), label: fs.existsSync(file) ? path.basename(file) : path.basename(dir) };
   });
   ipcMain.handle('sounds:list', () => {
     try {
@@ -553,6 +790,11 @@ async function debugHandler(route, body) {
   }
   if (route === 'reload') {
     overlay.webContents.reloadIgnoringCache();
+    return { ok: true };
+  }
+  if (route === 'unhook') {
+    // the pointer no longer passed on to her, as when Windows drops the mouse hook
+    overlay.setIgnoreMouseEvents(true);
     return { ok: true };
   }
   if (route === 'testwin') {
@@ -616,7 +858,22 @@ async function debugHandler(route, body) {
   throw new Error('unknown debug route');
 }
 
+// How her window is drawn, set before Electron starts (her menu › Display). On some PCs her see-through
+// window shows up black (NVIDIA with FXAA, MFAA or HDR on, for one): drawing it through OpenGL, or
+// without the graphics card, often fixes it.
+function applyRender() {
+  const { render } = config.load();
+  if (render === 'gl') app.commandLine.appendSwitch('use-angle', 'gl');
+  if (render === 'software') {
+    app.disableHardwareAcceleration();
+    app.commandLine.appendSwitch('enable-unsafe-swiftshader'); // her drawing still needs WebGL, done on the CPU
+  }
+  // --dev: what Chromium ended up drawing with
+  if (DEV) app.whenReady().then(() => setTimeout(() => console.log('[capri] display:', render, JSON.stringify(app.getGPUFeatureStatus())), 4000));
+}
+
 function main() {
+  applyRender();
   if (!app.requestSingleInstanceLock()) {
     app.quit();
     return;
@@ -625,6 +882,7 @@ function main() {
   if (process.platform === 'win32') app.setAppUserModelId('capri.desktop');
 
   app.whenReady().then(() => {
+    if (!['codex', 'claude'].includes(config.load().assistant)) config.save({ assistant: activeAssistant().id });
     serveProtocol();
     registerIpc();
     createOverlay();
@@ -632,21 +890,29 @@ function main() {
     windowWatch = startWindowWatch({
       overlay,
       onUpdate: (data) => {
+        // a click on the taskbar brings it up over her: sitting on it, her legs would vanish behind it
+        if (data.taskbar && !lastWindows?.taskbar && config.load().rest === 'taskbar') raiseOverlay();
         lastWindows = data;
         overlay?.webContents.send('windows:update', data);
       },
     });
     createBridge({
       port: PORT,
-      onEvent: (evt) => overlay?.webContents.send('claude:event', evt),
+      // her own Claude Code chat's hooks would cover its answer with theirs
+      onEvent: (evt) => !llm.isChatSession(evt.session_id) && overlay?.webContents.send('claude:event', evt),
       onDebug: DEV ? debugHandler : null,
     });
     globalShortcut.register('Control+Alt+C', () => toggleVisible());
     globalShortcut.register('Control+Alt+V', () => sendCommand('voice')); // a spoken conversation, or the end of it
+    llm.restoreClaude(readMemory().claude);
     refreshModels(); // for her menu's model list
+    setTimeout(() => launch.launchables().catch(() => {}), 20000); // what she can open, before you ask
     screen.on('display-metrics-changed', fitOverlay);
     screen.on('display-added', () => { fitOverlay(); rebuildTray(); });
     screen.on('display-removed', () => { fitOverlay(); rebuildTray(); });
+    // after sleep or a locked screen, once Windows has settled
+    powerMonitor.on('resume', () => setTimeout(rearmOverlay, 2000));
+    powerMonitor.on('unlock-screen', () => setTimeout(rearmOverlay, 1000));
   });
 
   app.on('will-quit', () => {

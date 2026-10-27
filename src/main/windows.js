@@ -46,7 +46,7 @@ function startWindowWatch({ overlay, onUpdate }) {
         .map((w) => toOverlay(w, bounds))
         // only what overlaps Capri's screen
         .filter((w) => w.x < bounds.width && w.x + w.w > 0 && w.y < bounds.height && w.y + w.h > 0);
-      onUpdate({ fg: snap.fg, wins });
+      onUpdate({ fg: snap.fg, taskbar: Boolean(snap.taskbar), wins });
     });
     child.stderr.on('data', (d) => console.error('[capri] window watch:', String(d).trim()));
     child.on('exit', () => {

@@ -314,6 +314,28 @@ body {
   overflow: hidden;
 }
 
+/* how far a download is (setup.js): a hard-edged green bar with her violet copy, filling on twos */
+.panel__progress {
+  position: relative;
+  height: 7px;
+  margin: 10px 3px 3px 0;
+  background: var(--ink-2);
+  box-shadow: 3px 3px 0 var(--violet);
+}
+
+.panel__bar {
+  position: absolute;
+  inset: 0;
+  background: var(--green);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 166ms steps(2, end);
+}
+
+html[data-motion='reduced'] .panel__bar {
+  transition: none;
+}
+
 /* Claude's whole answer, when you weren't on its window to read it: wider panel, scrolls */
 .panel.has-reply {
   width: clamp(340px, 30vw, 520px);
@@ -621,7 +643,8 @@ body {
 
 .panel.is-chat .panel__meta { order: -2; }
 
-.panel.is-chat .panel__quote {
+/* in a chat, what you said goes up top (not in her setup's panels with a line to type in) */
+.panel.is-chat:not(.is-guide) .panel__quote {
   order: -1;
   margin: 0 0 8px;
   padding-left: 0;
@@ -629,7 +652,7 @@ body {
   -webkit-line-clamp: 2;
 }
 
-.panel.is-chat .panel__quote::before {
+.panel.is-chat:not(.is-guide) .panel__quote::before {
   content: '> ';
   color: var(--accent);
   font-weight: 600;
@@ -641,6 +664,21 @@ body {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--violet) transparent;
+}
+
+/* her answer arrived: a short jolt of split colours and sideways slices, on twos */
+.panel__line.is-glitching {
+  animation: line-glitch 420ms steps(1, end) 1;
+}
+
+@keyframes line-glitch {
+  0% { text-shadow: -3px 0 var(--red), 3px 0 var(--blue); transform: translateX(2px) skewX(-6deg); clip-path: inset(0 0 55% 0); }
+  14% { text-shadow: 2px 0 var(--red), -2px 0 var(--green); transform: translateX(-3px); clip-path: inset(40% 0 0 0); }
+  28% { text-shadow: -2px 0 var(--red), 2px 0 var(--blue); transform: none; clip-path: none; }
+  46% { text-shadow: 1px 0 var(--violet), -1px 0 var(--green); transform: translateX(1px) skewX(4deg); clip-path: inset(10% 0 20% 0); }
+  62% { text-shadow: none; transform: none; clip-path: none; }
+  78% { text-shadow: -1px 0 var(--red), 1px 0 var(--blue); }
+  100% { text-shadow: none; }
 }
 
 /* her answer coming in: a block cursor at its end, on twos */
@@ -844,6 +882,7 @@ html[data-motion='reduced'] .panel__face img,
 html[data-motion='reduced'] .ticker.is-flash .ticker__plate,
 html[data-motion='reduced'] .ticker__dot,
 html[data-motion='reduced'] .panel__line.is-streaming::after,
+html[data-motion='reduced'] .panel__line.is-glitching,
 html[data-motion='reduced'] .panel[data-kind='alert'] .panel__state,
 html[data-motion='reduced'] .panel[data-voice='listening'] .panel__state {
   animation: none !important;

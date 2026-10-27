@@ -1,6 +1,6 @@
 // Turns Claude Code hook events into things Capri says and does.
 
-import { LINES } from './lines.js';
+import { linesFor, ASSISTANT_NAMES } from './lines.js';
 import { pick, fmt, duration, basename, rand } from './util.js';
 
 const EDIT_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
@@ -15,13 +15,15 @@ const THINK_SAY = 40000;
 const THINK_LONG = 120000;
 
 export class Brain {
-  constructor({ capri, panel, voice, host, mission, lang = 'fr' }) {
+  constructor({ capri, panel, voice, host, mission, lang = 'fr', assistant = 'claude' }) {
     this.capri = capri;
     this.panel = panel;
     this.voice = voice;
     this.host = host;
     this.mission = mission; // today's log, for her report card (mission.js)
     this.lang = lang;
+    this.assistant = assistant; // 'claude', 'codex' or 'agy': whose events she follows
+    this.custom = {};       // what you made her (custom.js): { userName, persona, myLines, memories }
     this.sessions = new Map();
     this.replyFor = null;    // the session whose answer she's holding up for you
     this.linked = true;      // has a Claude Code event ever reached her (app.js sets it from the config)
@@ -34,14 +36,19 @@ export class Brain {
   }
 
   get t() {
-    return LINES[this.lang] || LINES.fr;
+    return linesFor(this.lang, this.assistant);
+  }
+
+  // the assistant she watches, as she calls it
+  get name() {
+    return this.assistant === 'claude' ? 'Claude' : ASSISTANT_NAMES[this.assistant] || 'Claude';
   }
 
   session(evt) {
     const id = evt.session_id || 'default';
     let s = this.sessions.get(id);
     if (!s) {
-      s = { id, project: 'Claude', taskStart: null, count: 0, files: new Set(), log: [], working: false, waiting: false };
+      s = { id, project: this.name, taskStart: null, count: 0, files: new Set(), log: [], working: false, waiting: false };
       this.sessions.set(id, s);
     }
     if (evt.cwd) s.project = basename(evt.cwd);
@@ -64,8 +71,13 @@ export class Brain {
   }
 
   handle(evt) {
+    if (evt.demo && this.assistant !== 'claude' && typeof evt.message === 'string') {
+      evt = { ...evt, message: evt.message.replace(/Claude Code|Claude/g, this.name) };
+    }
     // the demo's second half (scripts/demo-sequence.js), not a Claude event
     if (evt.hook_event_name === 'CapriShowcase') return this.onShowcase?.();
+    // Codex's and Antigravity's hooks mark their sessions (codex:..., agy:...): only the one she watches counts
+    if (!evt.demo && (/^(codex|agy):/.exec(String(evt.session_id || ''))?.[1] || 'claude') !== this.assistant) return;
     if (!this.watching && !evt.demo) return undefined; // not watching Claude Code: none of its business
     // the first real Claude Code event that ever reaches her (the demo's don't count)
     if (!this.linked && !evt.demo) {
@@ -95,6 +107,13 @@ export class Brain {
       case 'Notification': return this.onNotification(evt, s);
       case 'Stop': return this.onStop(evt, s);
       case 'StopFailure': return this.onStopFailure(evt, s);
+      case 'Interrupt':
+        s.working = false;
+        if (!this.busySessions.length) {
+          this.panel.setTicker(null);
+          this.capri.setMode('idle');
+        }
+        return this.say('info', pick(this.t.interrupted), s, { face: 'wide', hold: 4000 });
       case 'SubagentStart': return this.onSubagent(evt, s, true);
       case 'SubagentStop': return this.onSubagent(evt, s, false);
       case 'PreCompact': return this.say('info', pick(this.t.compact), s, { face: 'aside', hold: 4000 });
@@ -178,6 +197,9 @@ export class Brain {
     if (EDIT_TOOLS.has(evt.tool_name)) {
       const file = evt.tool_input?.file_path || evt.tool_input?.notebook_path;
       if (file) s.files.add(file);
+      if (Array.isArray(evt.tool_input?.file_paths)) {
+        for (const edited of evt.tool_input.file_paths) if (typeof edited === 'string') s.files.add(edited);
+      }
     }
     if (this.capri.mode !== 'alert') this.capri.setMode('work');
     this.capri.pulse();
@@ -326,12 +348,24 @@ export class Brain {
     this.say('info', fmt(pick(this.t.bye), { project: s.project }), s, { face: 'aside', hold: 4000 });
   }
 
+  // Something to say with nothing going on: one of your lines half the time, if you wrote some.
+  idleLine() {
+    const mine = this.custom.myLines || [];
+    return fmt(mine.length && Math.random() < 0.5 ? pick(mine) : pick(this.t.idle), { name: this.custom.userName || 'choom' });
+  }
+
+  // What she says when she comes online: with your name, if she knows it.
+  onlineLine() {
+    const name = this.custom.userName;
+    return name ? fmt(pick(this.t.custom.onlineName), { name }) : pick(this.t.online);
+  }
+
   // What she says when you click her. Nothing going on: she offers to talk (chat.js).
   status() {
     const busy = this.busySessions;
     if (!busy.length) {
       const talk = this.onTalk && { actions: [{ id: 'talk', label: this.t.chat.talk }], onAction: () => this.onTalk(), hold: 6000 };
-      this.say('idle', pick(this.t.idle), null, { face: pick(['calm', 'smug', 'aside']), hold: 4000, ...talk });
+      this.say('idle', this.idleLine(), null, { face: pick(['calm', 'smug', 'aside']), hold: 4000, ...talk });
       return;
     }
     const s = busy.sort((a, b) => b.seen - a.seen)[0];
@@ -342,14 +376,15 @@ export class Brain {
 
   // What's going on, in plain words, for her chat: so she can answer "what's Claude up to?".
   context() {
+    const assistant = this.name;
     const busy = this.busySessions.sort((a, b) => b.seen - a.seen);
     const now = busy.length
       ? busy.map((s) => {
         const time = s.taskStart ? ` for ${duration(Date.now() - s.taskStart, 'en')}` : '';
         const last = s.last ? `, last: ${s.last.verb} ${s.last.target}` : '';
-        return `Claude is working on ${s.project}${time} (${plural(s.count, ['action', 'actions'], 'en')} so far${last}).`;
+        return `${assistant} is working on ${s.project}${time} (${plural(s.count, ['action', 'actions'], 'en')} so far${last}).`;
       }).join(' ')
-      : 'Claude is idle.';
+      : `${assistant} is idle.`;
     const d = this.mission?.day;
     const today = d ? ` Today: ${d.missions} tasks finished, ${d.actions} actions, ${d.files} files changed, ${d.errors} errors.` : '';
     return now + today;

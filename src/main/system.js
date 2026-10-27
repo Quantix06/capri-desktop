@@ -1,10 +1,9 @@
 'use strict';
 
-// Her hands on the PC, for what you ask her (chat.js, out loud or typed): the music, the volume,
-// launching an app from the Start menu, opening a web page. Windows only, through a small
-// PowerShell helper (system.ps1) started on first use and kept running, so a "volume 30" lands
-// at once. She never gets a free hand: only these few things, and an app is only ever launched
-// from the Start menu's own list.
+// Her hands on the PC, for what you ask her (powers.js, out loud or typed): the music, the volume,
+// opening a web page or a search (apps and games: launch.js). The music and the volume go through a
+// small PowerShell helper (system.ps1, Windows only) started on first use and kept running, so a
+// "volume 30" lands at once. She never gets a free hand: only these few things.
 
 const path = require('node:path');
 const readline = require('node:readline');
@@ -13,7 +12,6 @@ const { spawn } = require('node:child_process');
 // in the installed app it sits next to the app archive (asarUnpack), where PowerShell can read it
 const SCRIPT = path.join(__dirname, 'system.ps1').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
 const TIMEOUT_MS = 12000;
-const APPS_TTL_MS = 5 * 60 * 1000;
 
 let child = null;
 let seq = 0;
@@ -106,49 +104,6 @@ async function volume({ app = '', set, delta, mute } = {}) {
   return call('volume', { app: found.name, ...change });
 }
 
-// ---------- apps ----------
-
-let appsCache = null; // { at, list: [{ name, id }] }
-
-// The Start menu: everything that can be launched, [{ name, id }].
-async function launchables() {
-  if (appsCache && Date.now() - appsCache.at < APPS_TTL_MS) return appsCache.list;
-  const list = (await call('apps')).apps || [];
-  appsCache = { at: Date.now(), list };
-  return list;
-}
-
-// Uninstallers and help files are in the Start menu too: never those.
-const NOT_APPS = /uninstall|désinstall|desinstal|deinstal|readme|lisez|help|aide|documentation|release notes|website|site web/i;
-
-// The Start menu entry that `wanted` names ("spotify", "le bloc-notes", "vs code").
-async function findLaunchable(wanted) {
-  const key = simple(wanted);
-  if (key.length < 2) return null;
-  const apps = (await launchables()).filter((a) => !NOT_APPS.test(a.name));
-  const score = (app) => {
-    const name = simple(app.name);
-    if (name === key) return 100;
-    if (name.startsWith(key)) return 80 - (name.length - key.length) / 10; // "spotify" -> "Spotify Premium"
-    if (key.startsWith(name) && name.length >= 3) return 60;
-    // "code" -> "Visual Studio Code": a whole word of its name
-    const words = app.name.toLowerCase().split(/[^\p{L}\p{N}]+/u).map(simple).filter(Boolean);
-    if (words.includes(key)) return 50 - words.length;
-    if (key.length >= 4 && name.includes(key)) return 30 - (name.length - key.length) / 10;
-    return 0;
-  };
-  const best = apps.map((app) => [score(app), app]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0])[0];
-  return best ? best[1] : null;
-}
-
-// Launches a Start menu entry, by its id, only if it's still in the list.
-async function launch(id) {
-  const app = (await launchables()).find((a) => a.id === id);
-  if (!app) throw new Error('not in the Start menu');
-  await call('launch', { appId: app.id });
-  return { name: app.name };
-}
-
 // ---------- the web ----------
 
 // A web address as said ("youtube.com", "https://x.y/z"), or null when it isn't one.
@@ -184,10 +139,11 @@ function searchUrl(site, query) {
 }
 
 // Something to listen to ("daft punk"): looked up in Spotify when it's installed (its own
-// search, which doesn't start playing by itself), else on YouTube Music.
-async function musicSearch(query) {
+// search, which doesn't start playing by itself), else on YouTube Music. launch: launch.js, which
+// knows what's installed.
+async function musicSearch(query, launch) {
   const q = String(query || '').trim().slice(0, 200);
-  const spotify = process.platform === 'win32' && (await findLaunchable('spotify').catch(() => null));
+  const spotify = process.platform === 'win32' && (await launch.find('spotify').catch(() => null));
   if (spotify && /spotify/i.test(spotify.name)) return { url: `spotify:search:${encodeURIComponent(q)}`, where: 'Spotify' };
   return { url: searchUrl('music', q), where: 'YouTube Music' };
 }
@@ -198,6 +154,4 @@ function stop() {
   child = null;
 }
 
-module.exports = {
-  playing, media, sessions, volume, launchables, findLaunchable, launch, webAddress, searchUrl, musicSearch, stop,
-};
+module.exports = { playing, media, sessions, volume, webAddress, searchUrl, musicSearch, stop };

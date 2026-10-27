@@ -10,15 +10,15 @@ const { execFile } = require('node:child_process');
 // Ollama (she talks through it)
 const KEEP = new Set([
   'explorer', 'applicationframehost', 'textinputhost', 'shellexperiencehost', 'startmenuexperiencehost',
-  'searchhost', 'searchapp', 'lockapp', 'dwm', 'capri', 'electron', 'claude', 'ollama', 'ollama app',
+  'searchhost', 'searchapp', 'lockapp', 'dwm', 'capri', 'electron', 'claude', 'codex', 'ollama', 'ollama app',
 ]);
 
-function powershell(script) {
+function powershell(script, timeout = 15000) {
   return new Promise((resolve, reject) => {
     execFile('powershell.exe', [
       '-NoProfile', '-NonInteractive', '-Command',
       `[Console]::OutputEncoding = [Text.Encoding]::UTF8; ${script}`,
-    ], { windowsHide: true, timeout: 15000 }, (err, out) => (err ? reject(err) : resolve(out.trim())));
+    ], { windowsHide: true, timeout }, (err, out) => (err ? reject(err) : resolve(out.trim())));
   });
 }
 
@@ -74,4 +74,4 @@ async function close(name, { force = false } = {}) {
   return { running: Number(out) > 0 };
 }
 
-module.exports = { list, find, close };
+module.exports = { list, find, close, powershell };

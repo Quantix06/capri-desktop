@@ -3,8 +3,8 @@
 # Capri
 
 Capri, the *Project Capricorn* construct from Cyberpunk: Edgerunners season 2, lives on your desktop
-and tells you what **Claude Code** is up to. She teleports, glitches, comments on every action,
-comes to find you when Claude needs your permission, and loses it when the job is done.
+and tells you what your coding AI is up to: **Claude Code**, **Codex** or **Antigravity**. She teleports,
+glitches, comments on every action, comes to find you when it needs your permission, and loses it when the job is done.
 
 ![Capri telling you Claude is done](docs/done.png)
 
@@ -98,7 +98,10 @@ or glances back at you. When she's done, the wire reels back into her finger and
 - **Where's Claude?** She points at Claude's window: the one you typed your last prompt in.
 - **Claude's folder**: she opens `~/.claude` in Explorer with `settings.json` selected, points at the window, and
   explains what her hook in there is and how to take it out.
-- **Plug me into Claude**: her hooks in one click. It's also her welcome the first time she starts.
+- **Plug me into Claude**: her hooks in one click. It's also her welcome the first time she starts. Next to it,
+  **Free with Ollama** runs Claude Code (or Codex) through Ollama for you: her hooks go in, Ollama gets installed if it
+  isn't, and a window opens on `ollama launch claude`, where you pick a model.
+- **Talk to me**: see "Talk to her" below.
 
 She pulls faces while she talks: eight expressions, all frames of her from the show (watching, turned away, the fang
 grin, eyes gone round, looking right at you, laughing with her mouth wide open, all her eyes at once, the zigzag grin).
@@ -116,28 +119,50 @@ numbers count up. **Copy image** puts a picture of the card on your clipboard, o
 anywhere. In the evening (after 6 pm), after a real day's work (3 tasks or more), she brings it to you once, on her
 own. The demo doesn't count, and it stays on your PC, one day at a time.
 
-### Talk to her (Ollama)
+### Talk to her
 
 **Talk to her** in her menu (or the **Talk to me** button when you click her and nothing's going on): you type in her
-panel and she answers in character, through an AI model running on your PC with [Ollama](https://ollama.com). She knows
-what Claude is doing and what it got done today. She answers in writing (or out loud: see "Talk to her out loud"), in
-her own language.
+panel and she answers in character. She knows what Claude is doing and what it got done today. She answers in writing
+(or out loud: see "Talk to her out loud"), in her own language. Enter sends, Esc closes.
 
-1. Install Ollama and open it.
-2. In a terminal: `ollama pull llama3.2` (about 2 GB). Any chat model works: pick it in her menu › **AI model (Ollama)**.
-3. Her menu › **Talk to her**. Enter sends, Esc closes.
+The first time, she sets it up with you, with buttons, no terminal:
+
+- **On my PC** (free, nothing leaves your machine): she installs [Ollama](https://ollama.com) for you (with winget,
+  Windows' own installer), wakes it up, and downloads a model while a bar fills up: gemma3 (3.3 GB, better in languages
+  other than English) or llama3.2 (2 GB, for smaller PCs). On a tiny model (1B and under) she warns you it may talk
+  nonsense and offers a better one.
+- **Online, no account**: Pollinations, nothing to set up.
+- **I have a key**: Groq or Gemini (both have a free tier), OpenRouter, OpenAI, Mistral or DeepSeek. You paste your
+  key in her panel and she checks it. It's kept on your PC, encrypted with your Windows account, and only ever sent to
+  that service.
+
+Her menu › **AI model** lets you switch later: **Set it up with her…**, or straight to a service and a model, LM Studio
+(`:1234`), llama.cpp or vLLM (`:8080`), any OpenAI-compatible server (**API key or address…**), or **Claude Code**
+itself: your messages go to `claude -p` in the folder you pick, continuing one conversation, and her hooks show what it
+does. In that last one, permission mode `default` only lets it read (nobody is there to say yes); `acceptEdits` lets it
+edit files without asking. **Forget our conversations** clears what she remembers of your chats.
 
 **It's AI.** Her replies are written by the model, not by the show's writers: it's a fan version of her, and the chat
 panel says so every time.
 
-**Closing an app** (Windows): ask her ("close AM Music", "can you shut Discord down?") and she offers a button with the
-app's name. Nothing happens until you click it. She closes it the way its own close button does, so it can still ask
-you to save. If it only hid in the tray, she offers **Force quit**, again only on your click (unsaved work is lost
-then). She never closes Windows' own pieces, Claude, Ollama or herself. Out loud, you confirm by saying "yes".
+**What she can do on your PC** (Windows), when you ask her in the chat:
 
-### She does things for you (Windows)
+- **Open an app or a game**: anything in your Start menu (Store apps like Spotify included), your Steam and Epic
+  games ("open Spotify", "launch Brawlhalla"). Named in your own words, it opens right away; if only her AI came up
+  with it, you get a button first.
+- **Music**: "pause", "next", "louder", "mute"… press the media keys, so it works with Spotify and most players, right
+  as you send it. "Put Daft Punk on Spotify" opens Spotify on a search for it (the app if you have it, else the site).
+- **A website**: always behind a button showing where it goes.
+- **Close an app** ("close AM Music", "can you shut Discord down?"): a button with the app's name, and nothing happens
+  until you click it. She closes it the way its own close button does, so it can still ask you to save. If it only
+  hid in the tray, she offers **Force quit**, again only on your click (unsaved work is lost then). She never closes
+  Windows' own pieces, Claude, Ollama or herself. Out loud, you confirm by saying "yes".
 
-Ask her in her chat, or out loud: she gets the simple requests right away, in all five of her languages, without
+She can also look at your screen when you ask, and talk with you out loud: see below. Nothing else: never your files.
+
+### Straight from your words (Windows)
+
+Ask her in her chat, or out loud: she gets the simple requests right away and does them herself, in all five of her languages, without
 going through the AI (it's instant, and works even with a tiny model). For anything else, the model can ask for one
 of these itself, but only when your message asked for something. Several at once works too: "set the volume to 30 and
 open YouTube".
@@ -147,7 +172,7 @@ open YouTube".
 | "open YouTube", "go to reddit.com" | opens the page in your browser (or the app of that name, if you have it) | she flings her arm at the screen, red lightning off her fingers |
 | "open a web page", "open the browser" | opens your browser | the same |
 | "open my mail", "open my inbox" | your mail: Gmail, Outlook (web) or the Outlook / Mail app, picked in her menu › **My mail** | the same |
-| "launch Spotify", "start Notepad" | launches the app from the Start menu | the same, at the taskbar |
+| "launch Spotify", "start Notepad", "launch Brawlhalla" | launches the app or the game (Start menu, Steam, Epic) | the same, at the taskbar |
 | "search for pancake recipes", "search lofi girl on YouTube" | a Google search (or YouTube, Wikipedia, Maps, Images) | the same |
 | "pause", "resume the music", "next song", "previous" | drives whatever's playing (Spotify, your browser, AM Music… anything Windows' media flyout sees) | she goes quiet with her head down, dances, or swipes the air |
 | "what's this song?" | tells you the title and the artist | she leans in to listen |
@@ -159,7 +184,7 @@ If she can't find an app or a site by the name you said, she tells you and offer
 or "yes" out loud).
 
 What she never does: touch your files, your settings or your messages. An app is only launched if it's in your Start
-menu, and a page only opens over `http(s)`.
+menu (or a Steam / Epic game), and a page only opens over `http(s)`.
 
 And without asking her anything:
 - **The wheel** over her turns the volume (a bar shows by her head), **a middle click** pauses or resumes your music.
@@ -181,7 +206,7 @@ in character.
   herself. The same single picture, the same local model, nothing saved.
 - **One picture**, of the screen she's on, taken when you ask, without her on it, handed to the local model and then
   thrown away. Nothing is saved.
-- **It needs a model that sees** pictures: `ollama pull gemma3` (about 3 GB; `llava`, `qwen2.5vl`, `minicpm-v`… work
+- **It needs a model that sees** pictures, in Ollama (whatever answers her chat, Gemini or Claude Code included): `ollama pull gemma3` (about 3 GB; `llava`, `qwen2.5vl`, `minicpm-v`… work
   too). She finds it on her own; her menu › **Model that sees (Ollama)** to pick another. If your chat model sees
   pictures already, she uses it.
 
@@ -201,6 +226,19 @@ off. You can still type meanwhile.
   voice** to pick it, and **Read her typed answers out loud** if you want to hear her when you type, too.
 - **The microphone** is only on during a spoken conversation, and off while she talks (so she doesn't hear herself).
   Your voice never leaves your PC. If it doesn't work: Windows Settings › Privacy › Microphone › let desktop apps use it.
+
+### Make her yours
+
+Right-click her › **Make her yours…** (or "Make me yours" in her guide), one panel at a time, each one skippable:
+
+- **What she calls you.** She uses it now and then, and comes online with it ("Capri online. Hi, Max.").
+- **How she is**, in your words ("more teasing, and talk to me about Night City"): her chat follows it. She stays Capri.
+- **Lines of yours**, that she says now and then with hers when you click her. Write `{name}` in one and she puts
+  your name there.
+- **Things to remember** (your favorite game, your cat, D…): her chat keeps them in mind.
+
+In her chat, "call me Léa" and "remember that my cat is called Neko" work too. All of it stays in her settings on
+your PC.
 
 She only catches the mouse on her actual body (pixel-precise): the rest of the screen works as usual.
 
@@ -272,6 +310,20 @@ Restart your Claude Code sessions afterwards. To remove it: `npm run hooks:unins
 
 The hooks run `async`: they never slow Claude down, and when Capri isn't running they do nothing.
 
+### Codex or Antigravity instead of Claude Code
+
+Right-click her › **Watch** › **Codex** or **Antigravity**. She says hi and offers to plug herself in, like she does
+for Claude Code. Then:
+
+- **Codex**: restart it and trust her hooks when it asks. They go in `~/.codex/hooks.json`. Her hook for Codex needs
+  [Node.js](https://nodejs.org) 20 or newer on your PATH.
+- **Antigravity**: start a new conversation. Her hooks go in `~/.gemini/config/hooks.json`.
+
+She follows one of them at a time, the one picked in her menu, and her lines, her guide and her chat use its name.
+She only watches: when Codex or Antigravity asks for approval, you still answer it there. From the command line:
+`npm run hooks:codex:install` or `npm run hooks:agy:install` (`:uninstall` to remove them), and `npm run test:hooks`
+runs the tests of both adapters. **Watch** › **Nothing, just keep me company**: she stops talking about any of them.
+
 ### Try it without Claude
 
 ```bash
@@ -325,13 +377,17 @@ named like this (`.mp3`, `.wav`, `.ogg` or `.m4a`):
 
 - **Mac, Linux?** No installer yet, but you can run her from the source (see above).
 - **Phone, Android?** No, she needs a desktop.
-- **Other assistants (Codex, Cursor, Windsurf, Gemini…)?** Claude Code only for now.
+- **Other assistants?** Claude Code, Codex and Antigravity: her menu › **Watch**. Cursor, Windsurf and Gemini CLI: not yet.
 - **Ollama?** Two ways. Claude Code running on a local model through Ollama (`ollama launch claude`): she sees it like
   any Claude Code, it's just slower, and her ticker counts the seconds while it thinks. And she can chat with you
   through Ollama herself: see "Talk to her".
 - **She barely moves, her intro just fades in and out.** Windows has its animations turned off (Settings ›
   Accessibility › Visual effects › Animation effects), and she follows it. Her menu › **Animations** › **Full** makes
   her move anyway; the first time, she asks.
+- **A black screen behind her.** Some PCs show her see-through window black (often NVIDIA cards with FXAA, MFAA or
+  HDR on; other overlay apps like Desktop Mate do it too there). Right-click her, or her icon by the clock › **Display**
+  › **OpenGL**: she restarts drawn another way. Still black? **Without the graphics card**, which costs a bit more CPU.
+  Turning off FXAA and MFAA in the NVIDIA Control Panel can fix it as well.
 - **Can I turn her off?** Ctrl+Alt+C puts her away, **Quit** in her menu closes her. Claude Code works exactly the same
   without her.
 - **She only floats around and says idle things.** That's normal until Claude Code does something. If it never reacts,
@@ -456,3 +512,4 @@ the show, a fan-made cut-out and fan art (her intro's close-ups); they are **not
 If a rights holder wants them removed, open an issue.
 
 Fonts: Chakra Petch and JetBrains Mono, under the SIL Open Font License, via Fontsource.
+
