@@ -222,8 +222,17 @@ off. You can still type meanwhile.
   the graphics card when there is one, through [transformers.js](https://github.com/huggingface/transformers.js)). The
   first time, she asks before downloading it from Hugging Face (about 210 MB, once). Her menu › **Her voice** ›
   **Speech recognition**: *tiny* (fastest), *base* (default), *small* (more accurate, heavier).
-- **Her voice**: one of Windows' own voices (Zira, David, Mark in English…), nothing to install. Her menu › **Her
-  voice** to pick it, and **Read her typed answers out loud** if you want to hear her when you type, too.
+- **Her voice**: picked in her menu › **Her voice**, and **Read her typed answers out loud** if you want to hear her
+  when you type, too.
+  - **Capri's voice**: her real voice, a neural voice ([Piper](https://github.com/rhasspy/piper)) running on your PC
+    and made *hers*: small, sweet and a little whispered, with the chorus of minds in her, dead stops as if her
+    processor froze, a word stuttering like a scratched CD, older voices rising under hers, and saturated "Hihi!" /
+    "Oops!" cut off by static. Her menu › **Her voice** › **Her glitches**: *Light*, *Creepy doll* (default),
+    *Unstable construct*. The first time, she asks before downloading the voice (about 63 MB) and eSpeak-NG (18 MB,
+    which reads the text for the voice): once, then it all happens on your PC. No Piper woman's voice in Portuguese:
+    there, she keeps Windows'.
+  - **One of Windows' own voices** (Zira, David, Mark in English…), nothing to install. It's also the one she uses
+    while her own isn't there yet.
 - **The microphone** is only on during a spoken conversation, and off while she talks (so she doesn't hear herself).
   Your voice never leaves your PC. If it doesn't work: Windows Settings › Privacy › Microphone › let desktop apps use it.
 
@@ -404,8 +413,10 @@ project's name, Claude's last action, today's counts). Her mission log stays in 
 
 When you ask her to look at your screen, the picture goes to that same local Ollama, for that one answer, and is then
 thrown away. In a spoken conversation, your voice is turned into words on your PC (Whisper) and never sent or saved.
-The only connections out are the ones you ask for: the one-time download of the Whisper model from Hugging Face (after
-you said yes), and the pages or searches she opens in your browser.
+The only connections out are the ones you ask for: the one-time download of the Whisper model from Hugging Face, the
+one of her voice (Hugging Face for the Piper voice, jsDelivr for eSpeak-NG, each at a fixed version and checked
+against its fingerprint before it's kept), always after you said yes, and the pages or searches she opens in your
+browser.
 
 ## Art direction
 
@@ -490,7 +501,7 @@ src/renderer/js/
   commands.js            what you ask her to do, read straight from your words (5 languages, no AI)
   powers.js              doing it: music, volume, apps, the web, with the reaction that fits; the wheel, the middle click, dancing to your music
   ears.js                her ears: the microphone, telling when you talk, and Whisper (ears-worker.js, ears-worklet.js)
-  speech.js              her voice: her answers read with a Windows voice
+  speech.js              her voice: her own (speech-worker.js: eSpeak-NG then Piper, voicefx.js: her effects), or a Windows one
   lines.js               what she says (FR / EN / ES / PT / RU)
   chip.js                her mask: while she sleeps, and bottom left when you put her away
   voice.js               the sounds
@@ -512,4 +523,10 @@ the show, a fan-made cut-out and fan art (her intro's close-ups); they are **not
 If a rights holder wants them removed, open an issue.
 
 Fonts: Chakra Petch and JetBrains Mono, under the SIL Open Font License, via Fontsource.
+
+Her voice (downloaded when you ask, never bundled with Capri): the [Piper](https://github.com/rhasspy/piper) voices
+*siwis* (French, CC-BY 4.0, SIWIS, University of Edinburgh), *amy* (English, Mycroft's Mimic 3 voices), *sharvard*
+(Spanish, CC-BY 3.0, University of Edinburgh) and *irina* (Russian, RHVoice, licence not stated), and
+[eSpeak-NG](https://github.com/espeak-ng/espeak-ng) (GPL-3.0). Her voice is designed from what's known of the
+character, not copied from an actress's.
 

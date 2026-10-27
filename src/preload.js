@@ -65,4 +65,8 @@ contextBridge.exposeInMainWorld('host', {
   searchWeb: (site, query) => ipcRenderer.invoke('system:search', { site: String(site), query: String(query) }),
   playMusic: (query) => ipcRenderer.invoke('system:music', String(query)),
   setVoices: (names) => ipcRenderer.send('voices:list', names),
+  voiceStatus: (lang) => ipcRenderer.invoke('voice:status', String(lang)),
+  installVoice: (lang) => ipcRenderer.invoke('voice:install', String(lang)),
+  cancelVoice: () => ipcRenderer.send('voice:cancel'),
+  onVoiceProgress: on('voice:progress'),
 });

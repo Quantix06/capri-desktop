@@ -20,6 +20,7 @@ const ollama = require('./ollama'); // her look at your screen: always a local m
 const launch = require('./launch');
 const system = require('./system');
 const sight = require('./sight');
+const voicepack = require('./voicepack');
 const { ASSISTANTS, assistant } = require('./assistants');
 const activeAssistant = () => assistant(config.load().assistant); // Claude Code or Codex
 const activeHooks = () => activeAssistant().hooks;
@@ -75,12 +76,19 @@ function forgetChats() {
 }
 
 // capri://app/...        -> files of this repo
+// capri://app/.voice/... -> her own voice, once fetched (voicepack.js): same origin as her page, so
+//                           her voice's worker can load it
 // capri://usersounds/... -> the user's own sound overrides
 function serveProtocol() {
   protocol.handle('capri', (request) => {
     const url = new URL(request.url);
-    const base = url.host === 'usersounds' ? userSoundsDir() : ROOT;
-    const target = path.resolve(base, '.' + decodeURIComponent(url.pathname));
+    let pathname = decodeURIComponent(url.pathname);
+    let base = url.host === 'usersounds' ? userSoundsDir() : ROOT;
+    if (url.host === 'app' && pathname.startsWith('/.voice/')) {
+      base = voicepack.dir();
+      pathname = pathname.slice('/.voice'.length);
+    }
+    const target = path.resolve(base, '.' + pathname);
     if (target !== base && !target.startsWith(base + path.sep)) {
       return new Response('forbidden', { status: 403 });
     }
@@ -362,11 +370,27 @@ function rebuildTray() {
         { label: t.speakChat, type: 'checkbox', checked: cfg.speakChat, click: (item) => updateConfig({ speakChat: item.checked }) },
         { type: 'separator' },
         { label: t.herVoice, enabled: false },
+        // her own voice (fetched once, with your yes: the overlay asks), or one of Windows'
+        {
+          label: voicepack.status(resolveLang(cfg.lang)).available ? t.voiceCapri : t.voiceCapriNone,
+          type: 'radio',
+          enabled: voicepack.status(resolveLang(cfg.lang)).available,
+          checked: cfg.voiceEngine === 'capri',
+          click: () => sendCommand('capriVoice'),
+        },
         ...(voices.length
           ? voices.map((name, i) => ({
-            label: name, type: 'radio', checked: cfg.voiceName ? name === cfg.voiceName : i === 0, click: () => updateConfig({ voiceName: name }),
+            label: name, type: 'radio', checked: cfg.voiceEngine !== 'capri' && (cfg.voiceName ? name === cfg.voiceName : i === 0),
+            click: () => updateConfig({ voiceName: name, voiceEngine: 'system' }),
           }))
           : [{ label: t.noVoice, enabled: false }]),
+        {
+          label: t.glitch, // how unstable her own voice is
+          enabled: cfg.voiceEngine === 'capri',
+          submenu: [[0.15, t.glitchSoft], [0.5, t.glitchDoll], [0.9, t.glitchUnstable]].map(([voiceGlitch, label]) => ({
+            label, type: 'radio', checked: Math.abs((cfg.voiceGlitch ?? 0.5) - voiceGlitch) < 0.01, click: () => updateConfig({ voiceGlitch }),
+          })),
+        },
         { type: 'separator' },
         { label: t.ears, enabled: false },
         ...[['tiny', t.earsTiny], ['base', t.earsBase], ['small', t.earsSmall]].map(([ears, label]) => ({
@@ -734,6 +758,24 @@ function registerIpc() {
     voices = Array.isArray(list) ? list.map(String).slice(0, 30) : [];
     rebuildTray();
   });
+  // her own voice (voicepack.js): there yet for her language, and fetching it once you've said yes
+  let fetchingVoice = null; // AbortController
+  ipcMain.handle('voice:status', (_e, lang) => voicepack.status(lang));
+  ipcMain.handle('voice:install', async (_e, lang) => {
+    fetchingVoice?.abort();
+    const abort = new AbortController();
+    fetchingVoice = abort;
+    try {
+      const done = await voicepack.install(lang, (got, total) => overlay?.webContents.send('voice:progress', { got, total }), abort.signal);
+      rebuildTray();
+      return { ok: true, ...done };
+    } catch (err) {
+      return { ok: false, error: abort.signal.aborted ? 'stopped' : err.message };
+    } finally {
+      if (fetchingVoice === abort) fetchingVoice = null;
+    }
+  });
+  ipcMain.on('voice:cancel', () => fetchingVoice?.abort());
   // typing to her: the overlay takes the keyboard while the chat is open, and gives it back after
   ipcMain.on('overlay:focus', (_e, on) => {
     if (!overlay) return;

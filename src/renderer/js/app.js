@@ -431,6 +431,9 @@ async function boot() {
         if (chat.spoken) chat.stopVoice({ bye: true });
         else chat.startVoice();
         break;
+      case 'capriVoice': // her menu › Her voice › Capri's voice: fetched once with your yes, then on
+        chat.setupVoice();
+        break;
       case 'look': // "Look at my screen" in her menu: as if you'd asked her in her chat
         if (await chat.start()) chat.send(t.sight.prompt);
         break;

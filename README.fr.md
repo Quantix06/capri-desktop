@@ -235,8 +235,17 @@ elle demande si tu es toujours là, puis coupe le micro. Tu peux toujours écrir
   La première fois, elle te demande avant de le télécharger depuis Hugging Face (environ 210 Mo, une seule fois).
   Son menu › **Sa voix** › **Reconnaissance vocale** : *tiny* (plus rapide), *base* (par défaut), *small* (plus
   précis, plus lourd).
-- **Sa voix** : une des voix de Windows (Hortense, Julie, Paul en français…), rien à installer. Son menu › **Sa voix**
-  pour la choisir, et **Lire ses réponses écrites à voix haute** si tu veux l'entendre aussi quand tu écris.
+- **Sa voix** : au choix dans son menu › **Sa voix**, et **Lire ses réponses écrites à voix haute** si tu veux
+  l'entendre aussi quand tu écris.
+  - **Voix de Capri** : sa vraie voix, une voix neuronale ([Piper](https://github.com/rhasspy/piper)) qui tourne sur
+    ton PC et rendue *sienne* : petite, douce et un peu chuchotée, avec le chœur des esprits en elle, des arrêts nets
+    comme si son processeur freezait, un mot qui bégaie comme un CD rayé, des voix plus âgées qui remontent sous la
+    sienne, et des « Hihi ! » / « Oups ! » saturés coupés par de la friture. Son menu › **Sa voix** › **Ses glitchs** :
+    *Légers*, *Poupée flippante* (par défaut), *Construct instable*. La première fois, elle demande avant de
+    télécharger la voix (environ 63 Mo) et eSpeak-NG (18 Mo, qui lit le texte pour la voix) : une seule fois, puis
+    tout se passe sur ton PC. Pas de voix féminine Piper en portugais : là, elle garde celle de Windows.
+  - **Une des voix de Windows** (Hortense, Julie, Paul en français…), rien à installer. C'est aussi celle qu'elle prend
+    si sa voix n'est pas encore là.
 - **Le micro** n'est allumé que pendant une conversation vocale, et coupé quand elle parle (pour qu'elle ne s'entende
   pas elle-même). Ta voix ne quitte jamais ton PC. S'il ne marche pas : Paramètres Windows › Confidentialité ›
   Microphone › autoriser les applis de bureau.
@@ -428,8 +437,10 @@ sur ton PC.
 
 Quand tu lui demandes de regarder ton écran, l'image va au même Ollama local, pour cette réponse seulement, puis elle
 est jetée. En conversation vocale, ta voix est transcrite sur ton PC (Whisper) et n'est jamais envoyée ni enregistrée.
-Les deux seules connexions vers l'extérieur sont celles que tu demandes : le téléchargement unique du modèle Whisper
-depuis Hugging Face (après ton accord), et les pages ou recherches qu'elle ouvre dans ton navigateur.
+Les seules connexions vers l'extérieur sont celles que tu demandes : le téléchargement unique du modèle Whisper
+depuis Hugging Face, celui de sa voix (Hugging Face pour la voix Piper, jsDelivr pour eSpeak-NG, chacun à une version
+fixe et vérifié par son empreinte avant d'être gardé), toujours après ton accord, et les pages ou recherches qu'elle
+ouvre dans ton navigateur.
 
 ## Direction artistique
 
@@ -516,7 +527,7 @@ src/renderer/js/
   commands.js            ce que tu lui demandes de faire, lu directement dans tes mots (5 langues, sans IA)
   powers.js              le faire : musique, volume, applis, web, avec la réaction qui va avec ; molette, clic du milieu, danser sur ta musique
   ears.js                ses oreilles : le micro, la détection de ta voix, et Whisper (ears-worker.js, ears-worklet.js)
-  speech.js              sa voix : ses réponses lues avec une voix de Windows
+  speech.js              sa voix : la sienne (speech-worker.js : eSpeak-NG puis Piper, voicefx.js : ses effets), ou une de Windows
   lines.js               ce qu'elle dit (FR / EN / ES / PT / RU)
   chip.js                son masque : quand elle dort, et en bas à gauche quand tu la ranges
   voice.js               les sons
@@ -538,3 +549,9 @@ d'une découpe faite par des fans et d'un fan art (les gros plans de son intro) 
 Si un ayant droit veut qu'elles soient retirées, ouvre une issue.
 
 Polices : Chakra Petch et JetBrains Mono, sous licence SIL Open Font License, via Fontsource.
+
+Sa voix (téléchargée à ta demande, jamais incluse dans Capri) : les voix [Piper](https://github.com/rhasspy/piper)
+*siwis* (français, CC-BY 4.0, SIWIS, University of Edinburgh), *amy* (anglais, voix Mimic 3 de Mycroft), *sharvard*
+(espagnol, CC-BY 3.0, University of Edinburgh) et *irina* (russe, RHVoice, licence non précisée), et
+[eSpeak-NG](https://github.com/espeak-ng/espeak-ng) (GPL-3.0). Sa voix est conçue à partir de ce qu'on sait du
+personnage, pas copiée sur celle d'une actrice.

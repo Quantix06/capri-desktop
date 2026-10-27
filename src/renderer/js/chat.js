@@ -115,7 +115,7 @@ export class Chat {
     this.said = 0;       // messages you sent: what comes back late from an older one stays out of a newer one
     // a spoken conversation
     this.ears = new Ears();
-    this.speech = new Speech({ capri });
+    this.speech = new Speech({ capri, host });
     this.speech.onVoices = (names) => host.setVoices(names);
     this.spoken = false;    // on
     this.listening = null;  // AbortController of the turn she's listening to
@@ -135,8 +135,81 @@ export class Chat {
 
   configure(cfg) {
     this.cfg = cfg;
-    this.speech.voiceName = cfg.voiceName || null;
-    this.speech.setLang(cfg.lang);
+    this.speech.configure(cfg); // her voice: hers or Windows', how unstable, her language
+  }
+
+  // Her menu › Her voice › Capri's voice: her own voice (voicepack.js), fetched once you've said
+  // yes, then she says hello with it.
+  async setupVoice() {
+    const { host, panel, capri, brain } = this;
+    const v = brain.t.voice.own;
+    const lang = brain.lang;
+    if (capri.stowed) {
+      host.setConfig({ visible: true });
+      await capri.unstow();
+    }
+    capri.wake();
+    const status = await host.voiceStatus(lang);
+    if (!status.available) {
+      panel.say({ kind: 'info', face: 'aside', line: v.unavailable, hold: 7000 });
+      return;
+    }
+    if (status.ready) {
+      await this.helloVoice();
+      return;
+    }
+    const mb = Math.round(status.size / 1e6);
+    const yes = await new Promise((resolve) => {
+      const shown = panel.say({
+        kind: 'info',
+        face: 'look',
+        guide: true,
+        line: v.offer,
+        quote: fmt(v.offerHow, { size: mb, license: status.license }),
+        actions: [{ id: 'get', label: v.get, primary: true }, { id: 'no', label: v.notNow }],
+        onAction: (id) => resolve(id === 'get'),
+        onLeave: () => resolve(false),
+        hold: null,
+      });
+      if (!shown) resolve(false);
+    });
+    if (!yes) {
+      panel.hide();
+      return;
+    }
+    panel.say({
+      kind: 'info',
+      face: 'aside',
+      line: v.downloading,
+      quote: '0 %',
+      progress: 0,
+      actions: [{ id: 'stop', label: v.stop }],
+      onAction: () => host.cancelVoice(),
+      hold: null,
+    });
+    const off = host.onVoiceProgress(({ got, total }) => {
+      panel.setProgress(got / total);
+      panel.setQuote(`${Math.floor((got / total) * 100)} % · ${Math.round(got / 1e6)} / ${Math.round(total / 1e6)} ${v.mb}`);
+    });
+    const res = await host.installVoice(lang);
+    off();
+    if (!res.ok) {
+      panel.say({ kind: 'error', face: 'wide', line: res.error === 'stopped' ? v.stopped : fmt(v.failed, { error: res.error }), hold: 8000 });
+      return;
+    }
+    this.speech.reset(); // her worker loads the new files
+    await this.helloVoice();
+  }
+
+  // Her own voice on, and her first words with it.
+  async helloVoice() {
+    const v = this.brain.t.voice.own;
+    this.host.setConfig({ voiceEngine: 'capri' });
+    this.speech.engine = 'capri'; // now, not once the setting has gone round
+    const line = pick(v.hello);
+    this.panel.say({ kind: 'info', face: 'smug', line, hold: 9000 });
+    this.capri.perform('hop');
+    await this.speech.say(line, { lang: this.brain.lang });
   }
 
   // Opens her chat. Resolves with whether it's open.

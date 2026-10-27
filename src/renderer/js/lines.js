@@ -139,6 +139,20 @@ export const LINES = {
     },
     // une conversation à voix haute (chat.js, ears.js, speech.js)
     voice: {
+      // her own voice (speech.js, voicepack.js): fetched once with your yes
+      own: {
+        offer: 'Tu veux entendre ma vraie voix ?',
+        offerHow: 'Une voix neuronale qui tourne sur ton PC, rendue mienne : petite, douce, et qui glitche. Je télécharge une seule fois environ {size} Mo : la voix Piper (licence {license}) et eSpeak-NG (GPL-3.0), qui lit le texte pour elle. Rien d’autre ne sort de ton PC.',
+        get: 'Télécharger',
+        notNow: 'Pas maintenant',
+        stop: 'Arrêter',
+        downloading: 'Je télécharge ma voix…',
+        mb: 'Mo',
+        stopped: 'Téléchargement arrêté. Ma voix attendra.',
+        failed: 'Ma voix n’a pas pu arriver : {error}',
+        unavailable: 'Je n’ai pas encore de voix à moi dans cette langue : je parle avec celle de Windows.',
+        hello: ['Coucou, choom ! C’est moi. Hihi ! Enfin, c’est nous.', 'Ah, voilà ma voix. Tu m’entends bien ? Hihi !', 'Test, test… Oups ! Ça marche, choom.'],
+      },
       mic: { button: 'VOIX', label: 'Parler à voix haute', on: '● VOIX', listening: '● ÉCOUTE', hearing: '… J’ENTENDS', speaking: '◆ PARLE', typeToo: 'Je t’écoute… (ou écris)' },
       hello: ['Je t’écoute, choom.', 'Vas-y, parle. On est toutes ouïes.', 'Ligne vocale ouverte.'],
       still: ['Tu es toujours là ?', 'Allô ? Je ne t’entends plus.'],
@@ -444,6 +458,20 @@ export const LINES = {
     },
     // a spoken conversation (chat.js, ears.js, speech.js)
     voice: {
+      // her own voice (speech.js, voicepack.js): fetched once with your yes
+      own: {
+        offer: 'Want to hear my real voice?',
+        offerHow: 'A neural voice running on your PC, made mine: small, sweet, and glitchy. I fetch about {size} MB once: the Piper voice (licence: {license}) and eSpeak-NG (GPL-3.0), which reads the text for it. Nothing else leaves your PC.',
+        get: 'Download',
+        notNow: 'Not now',
+        stop: 'Stop',
+        downloading: 'Downloading my voice…',
+        mb: 'MB',
+        stopped: 'Download stopped. My voice can wait.',
+        failed: 'My voice couldn’t make it: {error}',
+        unavailable: 'I don’t have a voice of my own in this language yet: I talk with Windows’ voice.',
+        hello: ['Hey, choom! It’s me. Hihi! Well, us.', 'There’s my voice. Can you hear me? Hihi!', 'Testing, testing… Oops! It works, choom.'],
+      },
       mic: { button: 'VOICE', label: 'Talk out loud', on: '● VOICE', listening: '● LISTENING', hearing: '… HEARING', speaking: '◆ TALKING', typeToo: 'I’m listening… (or type)' },
       hello: ['I’m listening, choom.', 'Go on, talk. We’re all ears.', 'Voice line open.'],
       still: ['You still there?', 'Hello? I lost you.'],
@@ -748,6 +776,20 @@ export const LINES = {
     },
     // una conversación en voz alta (chat.js, ears.js, speech.js)
     voice: {
+      // her own voice (speech.js, voicepack.js): fetched once with your yes
+      own: {
+        offer: '¿Quieres oír mi voz de verdad?',
+        offerHow: 'Una voz neuronal que funciona en tu PC, hecha mía: pequeña, dulce y con glitches. Descargo una sola vez unos {size} MB: la voz de Piper (licencia {license}) y eSpeak-NG (GPL-3.0), que lee el texto para ella. Nada más sale de tu PC.',
+        get: 'Descargar',
+        notNow: 'Ahora no',
+        stop: 'Parar',
+        downloading: 'Descargando mi voz…',
+        mb: 'MB',
+        stopped: 'Descarga parada. Mi voz esperará.',
+        failed: 'Mi voz no pudo llegar: {error}',
+        unavailable: 'Aún no tengo voz propia en este idioma: hablo con la de Windows.',
+        hello: ['¡Hola, choom! Soy yo. ¡Jiji! Bueno, somos nosotras.', 'Ahí está mi voz. ¿Me oyes bien? ¡Jiji!', 'Probando, probando… ¡Ups! Funciona, choom.'],
+      },
       mic: { button: 'VOZ', label: 'Hablar en voz alta', on: '● VOZ', listening: '● ESCUCHO', hearing: '… OYENDO', speaking: '◆ HABLO', typeToo: 'Te escucho… (o escribe)' },
       hello: ['Te escucho, choom.', 'Dale, habla. Somos todo oídos.', 'Línea de voz abierta.'],
       still: ['¿Sigues ahí?', '¿Hola? Te perdí.'],
@@ -1051,6 +1093,20 @@ export const LINES = {
     },
     // uma conversa em voz alta (chat.js, ears.js, speech.js)
     voice: {
+      // her own voice (speech.js, voicepack.js): fetched once with your yes
+      own: {
+        offer: 'Quer ouvir a minha voz de verdade?',
+        offerHow: 'Uma voz neural rodando no seu PC, feita minha. Baixo uma vez uns {size} MB: a voz Piper (licença {license}) e o eSpeak-NG (GPL-3.0).',
+        get: 'Baixar',
+        notNow: 'Agora não',
+        stop: 'Parar',
+        downloading: 'Baixando a minha voz…',
+        mb: 'MB',
+        stopped: 'Download parado. Minha voz pode esperar.',
+        failed: 'Minha voz não conseguiu chegar: {error}',
+        unavailable: 'Ainda não tenho uma voz minha em português: falo com a do Windows.',
+        hello: ['Oi, choom! Sou eu. Hihi!'],
+      },
       mic: { button: 'VOZ', label: 'Falar em voz alta', on: '● VOZ', listening: '● OUVINDO', hearing: '… ESCUTANDO', speaking: '◆ FALANDO', typeToo: 'Estou ouvindo… (ou digite)' },
       hello: ['Estou ouvindo, choom.', 'Vai, fala. Somos todo ouvidos.', 'Linha de voz aberta.'],
       still: ['Ainda está aí?', 'Alô? Te perdi.'],
@@ -1354,6 +1410,20 @@ export const LINES = {
     },
     // разговор вслух (chat.js, ears.js, speech.js)
     voice: {
+      // her own voice (speech.js, voicepack.js): fetched once with your yes
+      own: {
+        offer: 'Хочешь услышать мой настоящий голос?',
+        offerHow: 'Нейросетевой голос, который работает на твоём ПК, сделанный моим: тонкий, милый и с глитчами. Я один раз скачаю около {size} МБ: голос Piper (лицензия: {license}) и eSpeak-NG (GPL-3.0), который читает ему текст. Больше ничего не уходит с твоего ПК.',
+        get: 'Скачать',
+        notNow: 'Не сейчас',
+        stop: 'Остановить',
+        downloading: 'Скачиваю свой голос…',
+        mb: 'МБ',
+        stopped: 'Загрузка остановлена. Мой голос подождёт.',
+        failed: 'Мой голос не смог добраться: {error}',
+        unavailable: 'У меня пока нет своего голоса на этом языке: говорю голосом Windows.',
+        hello: ['Привет, чум! Это я. Хи-хи! Ну, мы.', 'Вот мой голос. Хорошо слышно? Хи-хи!', 'Проверка, проверка… Ой! Работает, чум.'],
+      },
       mic: { button: 'ГОЛОС', label: 'Говорить вслух', on: '● ГОЛОС', listening: '● СЛУШАЮ', hearing: '… РАЗБИРАЮ', speaking: '◆ ГОВОРЮ', typeToo: 'Слушаю… (или пиши)' },
       hello: ['Слушаю тебя, чум.', 'Давай, говори. Мы все во внимании.', 'Голосовой канал открыт.'],
       still: ['Ты ещё здесь?', 'Алло? Я тебя потеряла.'],
